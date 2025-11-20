@@ -1,14 +1,21 @@
-
 import React from 'react';
 import { TrendingUp, Zap, Wallet, BarChart3, CheckCircle2, AlertTriangle, Box, ArrowRight } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import AudioButton from './AudioButton';
+import { voiceScripts } from '../data/voiceScripts';
+import { projects } from '../data/projects'; // Import projects to get voiceScriptKey
 
 interface DashboardProps {
   setActiveTab: (tabId: string) => void;
   projectId: string;
+  isPlaying: boolean;
+  currentPlayingId: string | null;
+  isLoadingAudio: boolean;
+  fetchAndPlayAudio: (text: string, id: string, title: string) => void;
+  pauseAudio: () => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, projectId }) => {
+const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, projectId, isPlaying, currentPlayingId, isLoadingAudio, fetchAndPlayAudio, pauseAudio }) => {
   
   // Plan 1 Data (The Farm)
   const plan1Data = {
@@ -206,14 +213,32 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, projectId }) => {
   const themeColor = getThemeColor();
   const fillColor = projectId === 'plan5' ? '#06b6d4' : (projectId === 'plan4' ? '#eab308' : (projectId === 'plan3' ? '#f59e0b' : (projectId === 'plan2' ? '#16a34a' : (projectId === 'plan3b' ? '#9333ea' : '#10b981'))));
 
+  // Get voice script for the current project
+  const currentProject = projects.find(p => p.id === projectId);
+  const projectVoiceScript = currentProject?.voiceScriptKey ? voiceScripts[currentProject.voiceScriptKey] : undefined;
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+        <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-slate-100">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-sm font-medium text-slate-500">Total Investment</p>
-              <h3 className="text-2xl font-bold text-slate-900 mt-1">R {data.investment.total}</h3>
+              <p className="text-sm font-medium text-slate-500 flex items-center">
+                Total Investment
+                {projectVoiceScript?.investment && (
+                  <AudioButton
+                    id={`${projectId}-investment`}
+                    title={projectVoiceScript.investment.title}
+                    text={projectVoiceScript.investment.text}
+                    isPlaying={isPlaying}
+                    currentPlayingId={currentPlayingId}
+                    isLoadingAudio={isLoadingAudio}
+                    fetchAndPlayAudio={fetchAndPlayAudio}
+                    pauseAudio={pauseAudio}
+                  />
+                )}
+              </p>
+              <h3 className="text-xl md:text-2xl font-bold text-slate-900 mt-1">R {data.investment.total}</h3>
             </div>
             <div className="p-2 bg-blue-50 rounded-lg">
               <Wallet className="h-5 w-5 text-blue-600" />
@@ -225,11 +250,25 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, projectId }) => {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+        <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-slate-100">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-sm font-medium text-slate-500">{projectId === 'plan1' ? 'Year 1 Revenue' : (projectId === 'plan2' || projectId === 'plan4' ? 'Year 7 Revenue' : 'Year 3 Revenue')}</p>
-              <h3 className="text-2xl font-bold text-slate-900 mt-1">R {projectId === 'plan1' ? data.chartData[0].revenue : (projectId === 'plan4' ? data.chartData[4].revenue : data.revenue.year3)}</h3>
+              <p className="text-sm font-medium text-slate-500 flex items-center">
+                {projectId === 'plan1' ? 'Year 1 Revenue' : (projectId === 'plan2' || projectId === 'plan4' ? 'Year 7 Revenue' : 'Year 3 Revenue')}
+                {projectVoiceScript?.revenue && (
+                  <AudioButton
+                    id={`${projectId}-revenue`}
+                    title={projectVoiceScript.revenue.title}
+                    text={projectVoiceScript.revenue.text}
+                    isPlaying={isPlaying}
+                    currentPlayingId={currentPlayingId}
+                    isLoadingAudio={isLoadingAudio}
+                    fetchAndPlayAudio={fetchAndPlayAudio}
+                    pauseAudio={pauseAudio}
+                  />
+                )}
+              </p>
+              <h3 className="text-xl md:text-2xl font-bold text-slate-900 mt-1">R {projectId === 'plan1' ? data.chartData[0].revenue : (projectId === 'plan4' ? data.chartData[4].revenue : data.revenue.year3)}</h3>
             </div>
             <div className={`p-2 bg-${themeColor}-50 rounded-lg`}>
               <TrendingUp className={`h-5 w-5 text-${themeColor}-600`} />
@@ -241,11 +280,25 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, projectId }) => {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+        <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-slate-100">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-sm font-medium text-slate-500">Jobs / Impact</p>
-              <h3 className="text-2xl font-bold text-slate-900 mt-1">{data.jobs.total}</h3>
+              <p className="text-sm font-medium text-slate-500 flex items-center">
+                Jobs / Impact
+                {projectVoiceScript?.jobs && (
+                  <AudioButton
+                    id={`${projectId}-jobs`}
+                    title={projectVoiceScript.jobs.title}
+                    text={projectVoiceScript.jobs.text}
+                    isPlaying={isPlaying}
+                    currentPlayingId={currentPlayingId}
+                    isLoadingAudio={isLoadingAudio}
+                    fetchAndPlayAudio={fetchAndPlayAudio}
+                    pauseAudio={pauseAudio}
+                  />
+                )}
+              </p>
+              <h3 className="text-xl md:text-2xl font-bold text-slate-900 mt-1">{data.jobs.total}</h3>
             </div>
             <div className="p-2 bg-amber-50 rounded-lg">
               <Zap className="h-5 w-5 text-amber-600" />
@@ -256,11 +309,25 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, projectId }) => {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+        <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-slate-100">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-sm font-medium text-slate-500">DSCR Coverage</p>
-              <h3 className="text-2xl font-bold text-slate-900 mt-1">{data.dscr.value}</h3>
+              <p className="text-sm font-medium text-slate-500 flex items-center">
+                DSCR Coverage
+                {projectVoiceScript?.dscr && (
+                  <AudioButton
+                    id={`${projectId}-dscr`}
+                    title={projectVoiceScript.dscr.title}
+                    text={projectVoiceScript.dscr.text}
+                    isPlaying={isPlaying}
+                    currentPlayingId={currentPlayingId}
+                    isLoadingAudio={isLoadingAudio}
+                    fetchAndPlayAudio={fetchAndPlayAudio}
+                    pauseAudio={pauseAudio}
+                  />
+                )}
+              </p>
+              <h3 className="text-xl md:text-2xl font-bold text-slate-900 mt-1">{data.dscr.value}</h3>
             </div>
             <div className="p-2 bg-purple-50 rounded-lg">
               <BarChart3 className="h-5 w-5 text-purple-600" />
@@ -273,14 +340,14 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, projectId }) => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+        <div className="lg:col-span-2 bg-white p-4 md:p-6 rounded-xl shadow-sm border border-slate-100">
           <h3 className="text-lg font-bold text-slate-900 mb-6">Financial Performance Forecast</h3>
-          <div className="h-72">
+          <div className="h-64 md:h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data.chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+              <BarChart data={data.chartData} margin={{ top: 5, right: 0, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                 <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `R${value}M`} />
+                <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `R${value}M`} width={45} />
                 <Tooltip 
                   contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                   formatter={(value: number) => [`R ${value}M`, '']}
@@ -292,14 +359,14 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, projectId }) => {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex flex-col">
+        <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-slate-100 flex flex-col">
           <h3 className="text-lg font-bold text-slate-900 mb-4">Strategic Vision</h3>
           <div className="flex-1 space-y-6">
             {data.phases.map((phase, idx) => (
                  <div key={idx} className={`relative pl-6 border-l-2 ${idx === 0 ? `border-${themeColor}-200` : 'border-slate-200'}`}>
                     <div className={`absolute -left-[9px] top-0 w-4 h-4 rounded-full ${idx === 0 ? `bg-${themeColor}-500` : 'bg-slate-300'} ring-4 ring-white`}></div>
-                    <h4 className="font-bold text-slate-900">{phase.title}</h4>
-                    <p className="text-sm text-slate-600 mt-1">{phase.time}</p>
+                    <h4 className="font-bold text-slate-900 text-sm md:text-base">{phase.title}</h4>
+                    <p className="text-xs md:text-sm text-slate-600 mt-1">{phase.time}</p>
                     <p className="text-xs text-slate-500 mt-1">{phase.desc}</p>
                 </div>
             ))}
@@ -307,7 +374,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, projectId }) => {
 
           <button 
             onClick={() => setActiveTab('model3d')}
-            className="mt-6 w-full py-3 bg-slate-900 hover:bg-emerald-600 text-white rounded-lg flex items-center justify-center gap-2 transition-all group shadow-sm hover:shadow-md"
+            className="mt-6 w-full py-3 bg-slate-900 hover:bg-emerald-600 text-white rounded-lg flex items-center justify-center gap-2 transition-all group shadow-sm hover:shadow-md text-sm md:text-base"
           >
             <Box className="w-4 h-4" />
             <span className="font-medium">Explore 3D Facility Model</span>
@@ -316,12 +383,26 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, projectId }) => {
         </div>
       </div>
 
-      <div className="bg-slate-900 rounded-xl p-6 text-white">
+      <div className="bg-slate-900 rounded-xl p-4 md:p-6 text-white">
         <div className="flex items-center gap-3 mb-4">
           <AlertTriangle className="text-amber-400 h-6 w-6" />
-          <h3 className="text-lg font-bold">Risk & Resilience Stress Test</h3>
+          <h3 className="text-lg font-bold flex items-center">
+            Risk & Resilience Stress Test
+            {projectVoiceScript?.risks && (
+                  <AudioButton
+                    id={`${projectId}-risks`}
+                    title={projectVoiceScript.risks.title}
+                    text={projectVoiceScript.risks.text}
+                    isPlaying={isPlaying}
+                    currentPlayingId={currentPlayingId}
+                    isLoadingAudio={isLoadingAudio}
+                    fetchAndPlayAudio={fetchAndPlayAudio}
+                    pauseAudio={pauseAudio}
+                  />
+                )}
+          </h3>
         </div>
-        <p className="text-slate-300 mb-6 max-w-3xl">
+        <p className="text-slate-300 mb-6 max-w-3xl text-sm md:text-base">
           {projectId === 'plan5' 
             ? "The facility is designed to be completely immune to South African infrastructure risks. 100% Solar + Battery eliminates load-shedding risk entirely, protecting pharmaceutical batch integrity."
             : projectId === 'plan3b'
@@ -338,13 +419,13 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, projectId }) => {
           }
         </p>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {data.risks.map((risk, i) => (
                 <div key={i} className="bg-slate-800 p-4 rounded-lg">
                     <p className="text-slate-400 text-xs uppercase tracking-wider font-bold mb-1">{risk.label}</p>
                     <div className="flex justify-between items-end">
-                    <span className={`text-2xl font-bold ${risk.color}`}>{risk.roi}</span>
-                    <span className="text-sm text-slate-400">{risk.subtext}</span>
+                    <span className={`text-xl md:text-2xl font-bold ${risk.color}`}>{risk.roi}</span>
+                    <span className="text-xs md:text-sm text-slate-400">{risk.subtext}</span>
                     </div>
                 </div>
             ))}

@@ -65,8 +65,8 @@ const CapacityRing = ({ label, current, max, unit, icon: Icon, colorClass, displ
     };
 
     return (
-        <div className="flex flex-col items-center justify-center p-6 bg-slate-50 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-            <div className="relative w-48 h-48 mb-4">
+        <div className="flex flex-col items-center justify-center p-6 bg-slate-50 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow w-full">
+            <div className="relative w-48 h-48 mb-4 scale-90 sm:scale-100">
                 <svg className="w-full h-full" viewBox="0 0 160 160">
                      {renderSegments()}
                 </svg>
@@ -98,8 +98,7 @@ const CapacityRing = ({ label, current, max, unit, icon: Icon, colorClass, displ
 const TechAndOps: React.FC<TechAndOpsProps> = ({ projectId }) => {
   const [activeStep, setActiveStep] = useState<number>(3);
 
-  // --- DATA DEFINITIONS ---
-
+  // --- DATA DEFINITIONS (Unchanged) ---
   // Plan 1 (The Farm) Steps
   const plan1Steps = [
     {
@@ -721,22 +720,22 @@ const TechAndOps: React.FC<TechAndOpsProps> = ({ projectId }) => {
       
       {/* Interactive Process Header */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="p-6 md:p-8 pb-4">
+        <div className="p-4 md:p-8 pb-4">
             <div className="flex flex-col md:flex-row justify-between md:items-end mb-8 gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold text-slate-900">Process Architecture</h2>
-                    <p className="text-slate-500 text-sm md:text-base">Interactive Schematic: Click stages to view telemetry.</p>
+                    <h2 className="text-xl md:text-2xl font-bold text-slate-900">Process Architecture</h2>
+                    <p className="text-slate-500 text-xs md:text-base">Interactive Schematic: Click stages to view telemetry.</p>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100 self-start md:self-auto">
-                    <Activity className="w-4 h-4" />
+                <div className="flex items-center gap-2 text-xs md:text-sm text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100 self-start md:self-auto">
+                    <Activity className="w-3 h-3 md:w-4 md:h-4" />
                     <span className="font-bold">System Active: 100% Uptime</span>
                 </div>
             </div>
         </div>
 
         {/* Process Visualization - Flex Layout */}
-        <div className="px-6 md:px-8 pb-10">
-            <div className="flex flex-col lg:flex-row items-center lg:items-start justify-between">
+        <div className="px-4 md:px-8 pb-10">
+            <div className="flex flex-col lg:flex-row items-center lg:items-start justify-between gap-6 lg:gap-0">
                 {processSteps.map((step, index) => {
                     const Icon = step.icon;
                     const isActive = activeStep === step.id;
@@ -747,24 +746,24 @@ const TechAndOps: React.FC<TechAndOpsProps> = ({ projectId }) => {
                             {/* Step Node */}
                             <div 
                                 onClick={() => setActiveStep(step.id)}
-                                className="flex flex-col items-center relative z-10 flex-1 group cursor-pointer w-full lg:w-auto"
+                                className="flex flex-row lg:flex-col items-center lg:items-center relative z-10 flex-1 group cursor-pointer w-full lg:w-auto gap-4 lg:gap-0"
                             >
                                 {/* Circle Icon */}
                                 <div className={`
-                                    w-20 h-20 lg:w-24 lg:h-24 rounded-full border-4 flex items-center justify-center shadow-sm transition-all duration-300 bg-white
+                                    w-16 h-16 lg:w-24 lg:h-24 rounded-full border-4 flex items-center justify-center shadow-sm transition-all duration-300 bg-white flex-shrink-0
                                     ${isActive ? `${step.border} ring-4 ring-offset-2 ring-emerald-50 scale-105` : 'border-slate-100 group-hover:border-slate-300'}
                                 `}>
                                     <div className={`p-3 rounded-full ${step.bg} transition-colors`}>
-                                        <Icon className={`h-8 w-8 ${step.color}`} />
+                                        <Icon className={`h-6 w-6 lg:h-8 lg:w-8 ${step.color}`} />
                                     </div>
                                 </div>
                                 
                                 {/* Label */}
-                                <div className="text-center mt-4 mb-6 lg:mb-0 px-2">
+                                <div className="text-left lg:text-center mt-0 lg:mt-4 mb-0 lg:mb-0 px-2">
                                     <h3 className={`font-bold text-sm lg:text-base transition-colors ${isActive ? 'text-slate-900' : 'text-slate-500'}`}>
                                         {step.id}. {step.title}
                                     </h3>
-                                    <p className="text-xs text-slate-400 mt-1 lg:max-w-[120px] mx-auto">
+                                    <p className="text-xs text-slate-400 mt-1 lg:max-w-[120px] lg:mx-auto">
                                         {step.shortDesc}
                                     </p>
                                 </div>
@@ -780,7 +779,7 @@ const TechAndOps: React.FC<TechAndOpsProps> = ({ projectId }) => {
                             {!isLast && (
                                 <div className="flex flex-col lg:flex-row items-center justify-center self-stretch lg:self-auto lg:pt-10 flex-shrink-0 opacity-50">
                                     {/* Mobile Vertical Line */}
-                                    <div className="lg:hidden h-8 w-0.5 bg-slate-300 my-1 relative">
+                                    <div className="lg:hidden h-8 w-0.5 bg-slate-300 my-1 relative ml-8">
                                          <div className="absolute bottom-0 -left-1.5">
                                             <ChevronsDown className="w-4 h-4 text-slate-400 animate-arrow-down" />
                                          </div>
@@ -802,7 +801,7 @@ const TechAndOps: React.FC<TechAndOpsProps> = ({ projectId }) => {
         </div>
 
         {/* The "Monitor" Panel */}
-        <div className="bg-slate-900 border-t border-slate-800 p-6 md:p-8 text-white">
+        <div className="bg-slate-900 border-t border-slate-800 p-4 md:p-8 text-white">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Left: Description */}
                 <div className="lg:col-span-1 space-y-4">
@@ -811,7 +810,7 @@ const TechAndOps: React.FC<TechAndOpsProps> = ({ projectId }) => {
                             <activeData.icon className={`h-6 w-6 ${activeData.color.replace('text-', 'text-white ')}`} />
                         </div>
                         <div>
-                            <h3 className="font-bold text-xl">{activeData.title}</h3>
+                            <h3 className="font-bold text-lg md:text-xl">{activeData.title}</h3>
                             <span className="text-xs uppercase tracking-wider text-slate-400">System Status: Nominal</span>
                         </div>
                     </div>
@@ -822,37 +821,37 @@ const TechAndOps: React.FC<TechAndOpsProps> = ({ projectId }) => {
 
                 {/* Middle: Telemetry Grid */}
                 <div className="lg:col-span-2">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
                          {/* Metric 1: Temperature */}
-                        <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
-                            <div className="flex items-center gap-2 mb-2 text-slate-400 text-xs font-bold uppercase">
-                                <Thermometer className="h-4 w-4" /> Temperature
+                        <div className="bg-slate-800 rounded-lg p-3 md:p-4 border border-slate-700">
+                            <div className="flex items-center gap-2 mb-2 text-slate-400 text-[10px] md:text-xs font-bold uppercase">
+                                <Thermometer className="h-3 w-3 md:h-4 md:w-4" /> Temperature
                             </div>
-                            <div className="text-xl font-mono font-bold text-amber-400">{activeData.details.temp}</div>
+                            <div className="text-lg md:text-xl font-mono font-bold text-amber-400">{activeData.details.temp}</div>
                         </div>
                         
                          {/* Metric 2: Pressure */}
-                        <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
-                            <div className="flex items-center gap-2 mb-2 text-slate-400 text-xs font-bold uppercase">
-                                <Gauge className="h-4 w-4" /> Pressure
+                        <div className="bg-slate-800 rounded-lg p-3 md:p-4 border border-slate-700">
+                            <div className="flex items-center gap-2 mb-2 text-slate-400 text-[10px] md:text-xs font-bold uppercase">
+                                <Gauge className="h-3 w-3 md:h-4 md:w-4" /> Pressure
                             </div>
-                            <div className="text-xl font-mono font-bold text-blue-400">{activeData.details.pressure}</div>
+                            <div className="text-lg md:text-xl font-mono font-bold text-blue-400">{activeData.details.pressure}</div>
                         </div>
 
                          {/* Metric 3: Throughput */}
-                        <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
-                            <div className="flex items-center gap-2 mb-2 text-slate-400 text-xs font-bold uppercase">
-                                <Activity className="h-4 w-4" /> Throughput
+                        <div className="bg-slate-800 rounded-lg p-3 md:p-4 border border-slate-700">
+                            <div className="flex items-center gap-2 mb-2 text-slate-400 text-[10px] md:text-xs font-bold uppercase">
+                                <Activity className="h-3 w-3 md:h-4 md:w-4" /> Throughput
                             </div>
-                            <div className="text-xl font-mono font-bold text-emerald-400">{activeData.details.throughput}</div>
+                            <div className="text-lg md:text-xl font-mono font-bold text-emerald-400">{activeData.details.throughput}</div>
                         </div>
 
                          {/* Metric 4: Key KPI */}
-                        <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
-                            <div className="flex items-center gap-2 mb-2 text-slate-400 text-xs font-bold uppercase">
-                                <Scale className="h-4 w-4" /> Efficiency
+                        <div className="bg-slate-800 rounded-lg p-3 md:p-4 border border-slate-700">
+                            <div className="flex items-center gap-2 mb-2 text-slate-400 text-[10px] md:text-xs font-bold uppercase">
+                                <Scale className="h-3 w-3 md:h-4 md:w-4" /> Efficiency
                             </div>
-                            <div className="text-xl font-mono font-bold text-purple-400">{activeData.details.efficiency}</div>
+                            <div className="text-lg md:text-xl font-mono font-bold text-purple-400">{activeData.details.efficiency}</div>
                         </div>
                     </div>
                 </div>
@@ -862,7 +861,7 @@ const TechAndOps: React.FC<TechAndOpsProps> = ({ projectId }) => {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+        <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-slate-100">
             <h3 className="text-lg font-bold text-slate-900 mb-6">Production Capacity (Annual)</h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                 {projectId === 'plan5' ? (
@@ -1079,7 +1078,7 @@ const TechAndOps: React.FC<TechAndOpsProps> = ({ projectId }) => {
             </div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+        <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-slate-100">
             <h3 className="text-lg font-bold text-slate-900 mb-4">Competitive Moat</h3>
             <p className="text-slate-600 text-sm mb-6">
                 {projectId === 'plan5' 

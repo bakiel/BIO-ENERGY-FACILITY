@@ -1,31 +1,49 @@
-
 import React from 'react';
-import { ArrowRight, Leaf, Zap, Users, TrendingUp, ShieldCheck, Sprout, Globe, CheckCircle2, Anchor, Battery, Truck, Factory, MapPin, Expand, Droplets, Layers, FileText, Coins } from 'lucide-react';
+import { ArrowRight, Leaf, Zap, Users, TrendingUp, ShieldCheck, Factory, MapPin, Droplets, Layers, Battery, Truck, Coins, Globe, PlayCircle, Star } from 'lucide-react';
+import { voiceScripts } from '../data/voiceScripts';
+import AudioButton from './AudioButton';
 
 interface LandingPageProps {
-  onEnter: () => void;
+  onEnter: (tab?: string) => void;
+  isPlaying: boolean;
+  currentPlayingId: string | null;
+  isLoadingAudio: boolean;
+  fetchAndPlayAudio: (text: string, id: string, title: string) => void;
+  pauseAudio: () => void;
 }
 
-const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
+const LandingPage: React.FC<LandingPageProps> = ({ onEnter, isPlaying, currentPlayingId, isLoadingAudio, fetchAndPlayAudio, pauseAudio }) => {
+  const heroIntro = voiceScripts.landingPage.heroIntro;
+  const energyDive = voiceScripts.landingPage.energyDive;
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans selection:bg-emerald-200 selection:text-emerald-900 animate-fade-in">
       
       {/* Navigation */}
-      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="relative flex items-center justify-center rounded-full overflow-hidden h-10 w-10 shadow-md">
+      <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 sm:h-20 flex justify-between items-center">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="relative flex items-center justify-center rounded-full overflow-hidden h-8 w-8 sm:h-10 sm:w-10 shadow-md">
                 <img src="https://i.postimg.cc/9Fp8zz5K/UAEI-Icon.png" alt="Ubuntu Restoration Farms" className="w-full h-full object-cover" />
             </div>
-            <span className="font-bold text-xl tracking-tight text-slate-900">Ubuntu Restoration</span>
+            <span className="font-bold text-lg sm:text-xl tracking-tight text-slate-900">Ubuntu Restoration</span>
           </div>
-          <button 
-            onClick={onEnter}
-            className="group flex items-center gap-2 bg-slate-900 hover:bg-emerald-600 text-white px-6 py-2.5 rounded-full font-medium transition-all duration-300 shadow-lg hover:shadow-emerald-500/30"
-          >
-            Enter Portal
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </button>
+          <div className="flex gap-3">
+            <button 
+              onClick={() => onEnter('storyboard')}
+              className="hidden md:flex items-center gap-2 text-slate-600 hover:text-emerald-600 font-medium px-4 py-2 transition-colors"
+            >
+              <PlayCircle className="w-4 h-4" />
+              Presentation Mode
+            </button>
+            <button 
+                onClick={() => onEnter('dashboard')}
+                className="group flex items-center gap-2 bg-slate-900 hover:bg-emerald-600 text-white px-4 sm:px-6 py-2 sm:py-2.5 rounded-full font-medium text-sm sm:text-base transition-all duration-300 shadow-lg hover:shadow-emerald-500/30"
+            >
+                Enter Portal
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </button>
+          </div>
         </div>
       </nav>
 
@@ -38,36 +56,54 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
                 alt="South African Agriculture" 
                 className="w-full h-full object-cover opacity-30"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/95 to-slate-900/60"></div>
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-slate-900 lg:bg-gradient-to-r lg:from-slate-900 lg:via-slate-900/95 lg:to-slate-900/60"></div>
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-6 py-20 lg:py-28">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-16 lg:py-28">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-bold uppercase tracking-wider mb-8">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs sm:text-sm font-bold uppercase tracking-wider mb-6">
                     <Leaf className="w-4 h-4" />
                     The Convergence Opportunity
                 </div>
-                <h1 className="text-4xl lg:text-5xl font-bold text-white leading-tight mb-6">
+                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight mb-6 flex items-center">
                     How One <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-blue-400">R438M Investment</span> Solves Eight Government Priorities Simultaneously.
+                    <AudioButton
+                        id="landingPage-heroIntro"
+                        title={heroIntro.title}
+                        text={heroIntro.text}
+                        isPlaying={isPlaying}
+                        currentPlayingId={currentPlayingId}
+                        isLoadingAudio={isLoadingAudio}
+                        fetchAndPlayAudio={fetchAndPlayAudio}
+                        pauseAudio={pauseAudio}
+                    />
                 </h1>
-                <p className="text-lg text-slate-300 leading-relaxed mb-8 border-l-4 border-emerald-500 pl-6">
+                <p className="text-base sm:text-lg text-slate-300 leading-relaxed mb-8 border-l-4 border-emerald-500 pl-4 sm:pl-6">
                     Government departments operate in silos. Ubuntu Restoration Farms represents a rare convergence point where infrastructure investment delivers outcomes for Agriculture, Energy, Labour, Environment, and Trade—<strong>simultaneously</strong>.
                 </p>
                 
-                <div className="flex flex-wrap gap-4">
+                <div className="flex flex-col sm:flex-row gap-4">
                     <button 
-                        onClick={onEnter}
-                        className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-4 rounded-lg font-bold text-lg transition-colors shadow-lg hover:shadow-emerald-500/25 flex items-center gap-3"
+                        onClick={() => onEnter('dashboard')}
+                        className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-4 rounded-lg font-bold text-lg transition-colors shadow-lg hover:shadow-emerald-500/25 flex items-center justify-center gap-3"
                     >
                         View Investment Model
                         <ArrowRight className="w-5 h-5" />
                     </button>
+                     <button 
+                        onClick={() => onEnter('storyboard')}
+                        className="relative bg-white/5 hover:bg-white/10 border border-white/20 text-white px-8 py-4 rounded-lg font-bold text-lg transition-all flex items-center justify-center gap-3 backdrop-blur-sm group overflow-hidden"
+                    >
+                        <div className="absolute top-0 right-0 bg-amber-500 text-[10px] font-bold px-2 py-0.5 text-slate-900 uppercase tracking-wide">New</div>
+                        <PlayCircle className="w-5 h-5 text-emerald-400 group-hover:scale-110 transition-transform" />
+                        Start Interactive Presentation
+                    </button>
                 </div>
             </div>
 
-            {/* Property Specific Card */}
-            <div className="bg-white/10 backdrop-blur-md p-0 rounded-2xl border border-white/10 shadow-2xl relative overflow-hidden group">
+            {/* Property Specific Card - Hidden on Mobile to save space/focus on CTA */}
+            <div className="bg-white/10 backdrop-blur-md p-0 rounded-2xl border border-white/10 shadow-2xl relative overflow-hidden group hidden lg:block">
                 {/* Card Image */}
                 <div className="h-48 w-full relative">
                     <img 
@@ -129,16 +165,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
       </section>
 
       {/* 8 Priorities Grid */}
-      <section className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center max-w-3xl mx-auto mb-20">
-            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-6">Aligning Mandates with Returns</h2>
-            <p className="text-lg text-slate-600">
+      <section className="py-16 sm:py-24 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-20">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-4 sm:mb-6">Aligning Mandates with Returns</h2>
+            <p className="text-base sm:text-lg text-slate-600">
               We address eight separate government crises with one integrated solution.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             {/* 1. Food Security */}
             <div className="p-6 rounded-2xl bg-slate-50 border border-slate-100 hover:border-emerald-200 transition-colors group">
                 <div className="w-12 h-12 rounded-xl bg-green-100 text-green-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
@@ -247,7 +283,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
       </section>
 
       {/* Energy Sovereignty Deep Dive */}
-      <section className="py-24 bg-slate-900 text-white relative overflow-hidden">
+      <section className="py-16 sm:py-24 bg-slate-900 text-white relative overflow-hidden">
         <div className="absolute inset-0">
              <img 
                 src="https://images.unsplash.com/photo-1473341304170-5799ca1f619c?q=80&w=2688&auto=format&fit=crop" 
@@ -257,15 +293,27 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
         </div>
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-emerald-900/30 rounded-full blur-[100px] translate-x-1/3"></div>
         
-        <div className="max-w-7xl mx-auto px-6 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-900 border border-emerald-700 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-6">
                 <Battery className="w-4 h-4" />
                 Challenge #2: Energy Security
               </div>
-              <h2 className="text-4xl font-bold mb-6">Complete Energy & Logistics Independence</h2>
-              <p className="text-lg text-slate-300 mb-8">
+              <h2 className="text-3xl sm:text-4xl font-bold mb-6 flex items-center">
+                Complete Energy & Logistics Independence
+                <AudioButton
+                    id="landingPage-energyDive"
+                    title={energyDive.title}
+                    text={energyDive.text}
+                    isPlaying={isPlaying}
+                    currentPlayingId={currentPlayingId}
+                    isLoadingAudio={isLoadingAudio}
+                    fetchAndPlayAudio={fetchAndPlayAudio}
+                    pauseAudio={pauseAudio}
+                />
+              </h2>
+              <p className="text-base sm:text-lg text-slate-300 mb-8">
                 South African agriculture is 100% dependent on imported diesel. When supply chains break, tractors stop. 
                 <strong className="text-emerald-400"> We are changing that.</strong>
               </p>
@@ -276,8 +324,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
                     <Factory className="w-6 h-6 text-emerald-500" />
                   </div>
                   <div>
-                    <h4 className="text-xl font-bold text-white">Bio-Diesel Refinery (R35.3M)</h4>
-                    <p className="text-slate-400 mt-1">Produces 3.45M Litres/Year of B100 (SANS 342) fuel. 3,000T Biochar byproduct.</p>
+                    <h4 className="text-lg sm:text-xl font-bold text-white">Bio-Diesel Refinery (R35.3M)</h4>
+                    <p className="text-sm sm:text-base text-slate-400 mt-1">Produces 3.45M Litres/Year of B100 (SANS 342) fuel. 3,000T Biochar byproduct.</p>
                   </div>
                 </div>
                 <div className="flex gap-4">
@@ -285,8 +333,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
                     <Truck className="w-6 h-6 text-blue-500" />
                   </div>
                   <div>
-                    <h4 className="text-xl font-bold text-white">Integrated Logistics Fleet (R1.79M)</h4>
-                    <p className="text-slate-400 mt-1">Carbon-neutral fleet fueled by our own bio-diesel. Zero fossil fuel exposure.</p>
+                    <h4 className="text-lg sm:text-xl font-bold text-white">Integrated Logistics Fleet (R1.79M)</h4>
+                    <p className="text-sm sm:text-base text-slate-400 mt-1">Carbon-neutral fleet fueled by our own bio-diesel. Zero fossil fuel exposure.</p>
                   </div>
                 </div>
                 <div className="flex gap-4">
@@ -294,14 +342,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
                     <TrendingUp className="w-6 h-6 text-amber-500" />
                   </div>
                   <div>
-                    <h4 className="text-xl font-bold text-white">Financial Performance</h4>
-                    <p className="text-slate-400 mt-1">Year 3 Revenue: R89.8M. EBITDA: R72.6M (80.7% Margin). DSCR: 12.9x.</p>
+                    <h4 className="text-lg sm:text-xl font-bold text-white">Financial Performance</h4>
+                    <p className="text-sm sm:text-base text-slate-400 mt-1">Year 3 Revenue: R89.8M. EBITDA: R72.6M (80.7% Margin). DSCR: 12.9x.</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="relative">
+            <div className="relative mt-8 lg:mt-0">
                 <div className="absolute inset-0 rounded-2xl overflow-hidden transform rotate-2 translate-x-4 translate-y-4 bg-emerald-900/50"></div>
                 
                 <div className="bg-slate-800 rounded-2xl p-0 border border-slate-700 shadow-2xl relative overflow-hidden">
@@ -315,26 +363,26 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
                         <h3 className="absolute bottom-4 left-6 text-lg font-bold text-white z-10">Strategic Outputs</h3>
                     </div>
 
-                    <div className="p-8 pt-6">
-                        <div className="grid grid-cols-2 gap-6">
+                    <div className="p-6 sm:p-8 pt-6">
+                        <div className="grid grid-cols-2 gap-4 sm:gap-6">
                             <div className="bg-slate-900 p-4 rounded-lg">
                             <div className="text-slate-400 text-xs uppercase font-bold mb-2">Bio-Diesel</div>
-                            <div className="text-3xl font-bold text-emerald-400">3.45M</div>
+                            <div className="text-2xl sm:text-3xl font-bold text-emerald-400">3.45M</div>
                             <div className="text-xs text-slate-500">Litres / Year</div>
                             </div>
                             <div className="bg-slate-900 p-4 rounded-lg">
                             <div className="text-slate-400 text-xs uppercase font-bold mb-2">Electricity</div>
-                            <div className="text-3xl font-bold text-amber-400">272.5k</div>
+                            <div className="text-2xl sm:text-3xl font-bold text-amber-400">272.5k</div>
                             <div className="text-xs text-slate-500">kWh / Year</div>
                             </div>
                             <div className="bg-slate-900 p-4 rounded-lg">
                             <div className="text-slate-400 text-xs uppercase font-bold mb-2">Biochar</div>
-                            <div className="text-3xl font-bold text-white">3,000</div>
+                            <div className="text-2xl sm:text-3xl font-bold text-white">3,000</div>
                             <div className="text-xs text-slate-500">Tonnes / Year</div>
                             </div>
                             <div className="bg-slate-900 p-4 rounded-lg">
                             <div className="text-slate-400 text-xs uppercase font-bold mb-2">Carbon Impact</div>
-                            <div className="text-3xl font-bold text-blue-400">-12,504</div>
+                            <div className="text-2xl sm:text-3xl font-bold text-blue-400">-12,504</div>
                             <div className="text-xs text-slate-500">T CO₂e / Year</div>
                             </div>
                         </div>
@@ -351,11 +399,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
       </section>
 
       {/* Funding Structure */}
-      <section className="py-24 bg-slate-50">
-        <div className="max-w-7xl mx-auto px-6">
+      <section className="py-16 sm:py-24 bg-slate-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
              {/* Investment Table */}
-             <div className="lg:col-span-1 bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
+             <div className="lg:col-span-1 bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200">
                 <div className="flex items-center gap-3 mb-6">
                     <div className="p-2 bg-emerald-100 rounded-lg">
                         <Coins className="w-6 h-6 text-emerald-600" />
@@ -387,7 +435,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
              </div>
 
              {/* Revenue Highlight */}
-             <div className="lg:col-span-2 flex flex-col justify-center bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
+             <div className="lg:col-span-2 flex flex-col justify-center bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200">
                 <div className="flex items-center gap-3 mb-6">
                     <div className="p-2 bg-blue-100 rounded-lg">
                         <TrendingUp className="w-6 h-6 text-blue-600" />
@@ -422,8 +470,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
                         <p className="text-slate-400 text-sm">Access the interactive dashboards, 3D facility models, and detailed operational plans.</p>
                     </div>
                     <button 
-                        onClick={onEnter}
-                        className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 rounded-lg font-bold transition-all shadow-lg hover:shadow-emerald-500/25 whitespace-nowrap flex items-center gap-2"
+                        onClick={() => onEnter('dashboard')}
+                        className="bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-3 rounded-lg font-bold transition-all shadow-lg hover:shadow-emerald-500/25 whitespace-nowrap flex items-center gap-2 w-full md:w-auto justify-center"
                     >
                         Enter Investment Portal
                         <ArrowRight className="w-5 h-5" />
@@ -436,14 +484,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter }) => {
 
       {/* Footer */}
       <footer className="bg-white border-t border-slate-200 py-12">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-3">
                 <div className="h-8 w-8 rounded-full overflow-hidden">
                      <img src="https://i.postimg.cc/9Fp8zz5K/UAEI-Icon.png" alt="Ubuntu Restoration Farms" className="w-full h-full object-cover" />
                 </div>
                 <span className="font-bold text-slate-900">Ubuntu Restoration Farms</span>
             </div>
-            <div className="text-slate-500 text-sm">
+            <div className="text-slate-500 text-sm text-center md:text-right">
                 © November 2025 Master Plan. Confidential Government Proposal.
             </div>
         </div>

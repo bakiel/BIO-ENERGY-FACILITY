@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { LayoutDashboard, BarChart3, Cog, Sprout, Box as BoxIcon, Network, Film } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
@@ -12,8 +12,10 @@ import MasterDashboard from './components/MasterDashboard';
 import SkeletonLoader from './components/SkeletonLoader';
 import LandingPage from './components/LandingPage';
 import AnimationStoryboard from './components/AnimationStoryboard';
+import GlobalAudioControls from './components/GlobalAudioControls';
 import { NavItem } from './types';
 import { projects } from './data/projects';
+import { GoogleGenAI, Modality } from '@google/genai';
 
 const navItems: NavItem[] = [
   { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
@@ -25,49 +27,252 @@ const navItems: NavItem[] = [
   { id: 'impact', label: 'Impact & ESG', icon: Sprout },
 ];
 
+// Utility functions for audio encoding/decoding (as per GenAI guidelines)
+function decode(base64: string) {
+  const binaryString = atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+async function decodeAudioData(
+  data: Uint8Array,
+  ctx: AudioContext,
+  sampleRate: number,
+  numChannels: number,
+): Promise<AudioBuffer> {
+  const dataInt16 = new Int16Array(data.buffer);
+  const frameCount = dataInt16.length / numChannels;
+  const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
+
+  for (let channel = 0; channel < numChannels; channel++) {
+    const channelData = buffer.getChannelData(channel);
+    for (let i = 0; i < frameCount; i++) {
+      channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
+    }
+  }
+  return buffer;
+}
+
 const App: React.FC = () => {
-  // State for Landing Page (The "Packaging")
   const [showLanding, setShowLanding] = useState(true);
-
-  // State for sidebar (mobile)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  
-  // State for Navigation Scope ('master' or specific project id)
   const [activeProjectId, setActiveProjectId] = useState<string | 'master'>('master');
-  
-  // State for tabs within a project
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [isLoading, setIsLoading] = useState(false); // For page transitions
 
-  // Loading state for transitions
-  const [isLoading, setIsLoading] = useState(false);
+  // --- Audio Playback States ---
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
+  const [currentPlayingId, setCurrentPlayingId] = useState<string | null>(null);
+  const [currentPlayingTitle, setCurrentPlayingTitle] = useState<string | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const audioCacheRef = useRef<Map<string, string>>(new Map());
+  let nextStartTime = useRef(0);
+  const sourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
+
+  // Initialize AudioContext only once
+  useEffect(() => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new AudioContext({ sampleRate: 24000 });
+    }
+  }, []);
+
+  const stopCurrentAudio = useCallback(() => {
+    if (audioSourceRef.current) {
+      audioSourceRef.current.stop();
+      audioSourceRef.current.disconnect();
+      audioSourceRef.current = null;
+    }
+    sourcesRef.current.forEach(source => {
+      source.stop();
+      source.disconnect();
+    });
+    sourcesRef.current.clear();
+    nextStartTime.current = 0;
+    setIsPlaying(false);
+    setCurrentPlayingId(null);
+    setCurrentPlayingTitle(null);
+    setIsLoadingAudio(false);
+  }, []);
+
+  const playAudioSegment = useCallback(async (audioData: string) => {
+    stopCurrentAudio(); // Stop any current playback
+
+    if (!audioContextRef.current) {
+      console.error('AudioContext not initialized.');
+      return;
+    }
+
+    try {
+      setIsPlaying(true);
+      const audioBuffer = await decodeAudioData(
+        decode(audioData),
+        audioContextRef.current,
+        24000,
+        1,
+      );
+
+      const source = audioContextRef.current.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(audioContextRef.current.destination); // Connect directly to destination
+
+      source.onended = () => {
+        sourcesRef.current.delete(source);
+        if (sourcesRef.current.size === 0) {
+          setIsPlaying(false);
+          setCurrentPlayingId(null);
+          setCurrentPlayingTitle(null);
+        }
+      };
+
+      // Schedule for immediate playback or after previous chunks
+      nextStartTime.current = Math.max(nextStartTime.current, audioContextRef.current.currentTime);
+      source.start(nextStartTime.current);
+      nextStartTime.current += audioBuffer.duration;
+      sourcesRef.current.add(source);
+      audioSourceRef.current = source; // Keep ref to current playing source for pause/stop
+
+    } catch (error) {
+      console.error('Error playing audio:', error);
+      alert('Failed to play audio. Please try again or check your internet connection.');
+      stopCurrentAudio();
+    } finally {
+      setIsLoadingAudio(false);
+    }
+  }, [stopCurrentAudio]);
+
+  const fetchAndPlayAudio = useCallback(async (text: string, id: string, title: string) => {
+    stopCurrentAudio(); // Stop previous audio first
+    setCurrentPlayingId(id);
+    setCurrentPlayingTitle(title);
+    setIsLoadingAudio(true);
+
+    if (!text || text.trim() === '') {
+      console.warn('Attempted to play empty text for TTS.');
+      setIsLoadingAudio(false);
+      setCurrentPlayingId(null);
+      setCurrentPlayingTitle(null);
+      return;
+    }
+
+    let audioData = audioCacheRef.current.get(id);
+
+    if (!audioData) {
+      try {
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const response = await ai.models.generateContent({
+          model: "gemini-2.5-flash-preview-tts",
+          contents: [{ parts: [{ text: text }] }],
+          config: {
+            responseModalities: [Modality.AUDIO],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: { voiceName: 'Zephyr' }, // Default voice
+              },
+            },
+          },
+        });
+
+        audioData = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+
+        if (audioData) {
+          audioCacheRef.current.set(id, audioData);
+        } else {
+          throw new Error('No audio data received from TTS API.');
+        }
+      } catch (error) {
+        console.error('TTS API error:', error);
+        alert('Failed to generate voice. Please try again later. Ensure you have selected an API key with billing enabled if using Veo models (though TTS is usually available).');
+        stopCurrentAudio();
+        return;
+      }
+    }
+
+    if (audioData) {
+      await playAudioSegment(audioData);
+    } else {
+      console.error('No audio data to play after fetch/cache lookup.');
+      stopCurrentAudio();
+    }
+  }, [playAudioSegment, stopCurrentAudio]);
+
+  const pauseAudio = useCallback(() => {
+    if (audioContextRef.current && audioContextRef.current.state === 'running') {
+      audioContextRef.current.suspend();
+      setIsPlaying(false);
+    }
+  }, []);
+
+  const resumeAudio = useCallback(() => {
+    if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+      audioContextRef.current.resume();
+      setIsPlaying(true);
+    } else if (!isPlaying && currentPlayingId && audioCacheRef.current.has(currentPlayingId)) {
+        // If paused and then resumed from global control, restart playback from beginning
+        const cachedAudio = audioCacheRef.current.get(currentPlayingId);
+        if (cachedAudio) {
+            playAudioSegment(cachedAudio);
+        }
+    }
+  }, [isPlaying, currentPlayingId, playAudioSegment]);
+
+
+  const handleGlobalPlayPause = () => {
+    if (isPlaying) {
+      pauseAudio();
+    } else {
+      resumeAudio();
+    }
+  };
 
   const handleProjectChange = (id: string | 'master') => {
     if (id === activeProjectId) return;
     
+    stopCurrentAudio(); // Stop audio when changing projects
     setIsLoading(true);
     
-    // Simulate network/data processing delay for smooth transition
     setTimeout(() => {
         setActiveProjectId(id);
-        setActiveTab('dashboard'); // Reset to overview when entering a project
+        setActiveTab('dashboard'); 
         setIsLoading(false);
     }, 800);
   };
 
-  // Render the content based on state
+  const handleLandingEnter = (targetTab: string = 'dashboard') => {
+      stopCurrentAudio(); // Stop audio when leaving landing page
+      if (targetTab === 'storyboard') {
+          setActiveProjectId('master');
+          setActiveTab('storyboard');
+      } else {
+          setActiveProjectId('master');
+          setActiveTab('dashboard');
+      }
+      setShowLanding(false);
+  };
+
   const renderContent = () => {
     if (isLoading) {
         return <SkeletonLoader />;
     }
 
-    // If looking at Master Plan
+    const audioProps = {
+      isPlaying,
+      currentPlayingId,
+      isLoadingAudio,
+      fetchAndPlayAudio,
+      pauseAudio,
+    };
+
     if (activeProjectId === 'master') {
         if (activeTab === 'storyboard') return <AnimationStoryboard />;
-        return <MasterDashboard onSelectProject={handleProjectChange} />;
+        return <MasterDashboard onSelectProject={handleProjectChange} {...audioProps} />;
     }
 
-    // If looking at a specific project
-    // Allow Plan 1, 2, 3, 3B, 4, 5, 6 to render detailed views
     const availableProjects = ['plan1', 'plan2', 'plan3', 'plan3b', 'plan4', 'plan5', 'plan6'];
     
     if (!availableProjects.includes(activeProjectId)) {
@@ -95,7 +300,7 @@ const App: React.FC = () => {
 
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard setActiveTab={setActiveTab} projectId={activeProjectId} />;
+        return <Dashboard setActiveTab={setActiveTab} projectId={activeProjectId} {...audioProps} />;
       case 'financials':
         return <FinancialAnalysis projectId={activeProjectId} />;
       case 'technology':
@@ -109,16 +314,16 @@ const App: React.FC = () => {
       case 'impact':
         return <Impact projectId={activeProjectId} />;
       default:
-        return <Dashboard setActiveTab={setActiveTab} projectId={activeProjectId} />;
+        return <Dashboard setActiveTab={setActiveTab} projectId={activeProjectId} {...audioProps} />;
     }
   };
 
   if (showLanding) {
-      return <LandingPage onEnter={() => setShowLanding(false)} />;
+      return <LandingPage onEnter={handleLandingEnter} {...{ isPlaying, currentPlayingId, isLoadingAudio, fetchAndPlayAudio, pauseAudio }} />;
   }
 
   return (
-    <div className="flex h-screen bg-slate-50 font-sans text-slate-900 selection:bg-emerald-200 selection:text-emerald-900">
+    <div className="flex h-screen bg-slate-50 font-sans text-slate-900 selection:bg-emerald-200 selection:text-emerald-900 overflow-hidden">
       <Sidebar 
         items={navItems} 
         activeTab={activeTab} 
@@ -127,25 +332,27 @@ const App: React.FC = () => {
         setIsOpen={setIsSidebarOpen}
         activeProjectId={activeProjectId}
         setActiveProjectId={handleProjectChange}
-        onBackToHome={() => setShowLanding(true)}
+        onBackToHome={() => {
+          stopCurrentAudio(); // Stop audio when returning to home
+          setShowLanding(true);
+        }}
       />
       
-      <main className="flex-1 overflow-y-auto h-screen">
-        <div className="max-w-7xl mx-auto p-6 md:p-8 pb-24">
-            {/* Mobile Header Spacer */}
-            <div className="h-16 lg:hidden"></div>
+      <main className="flex-1 overflow-y-auto h-screen scroll-smooth">
+        <div className="h-16 lg:hidden"></div>
+        
+        <div className="max-w-7xl mx-auto p-4 md:p-8 pb-24">
             
-            {/* Breadcrumbs / Header */}
-            <div className="flex justify-between items-center mb-8">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 gap-2">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900">
+                    <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
                         {activeProjectId === 'master' 
-                            ? 'Master Investment Portfolio' 
+                            ? (activeTab === 'storyboard' ? 'The Visual Journey' : 'Master Investment Portfolio')
                             : projects.find(p => p.id === activeProjectId)?.name}
                     </h1>
-                    <p className="text-slate-500 text-sm">
+                    <p className="text-slate-500 text-xs sm:text-sm">
                         {activeProjectId === 'master' 
-                            ? 'Real-time ecosystem monitoring and capital allocation' 
+                            ? (activeTab === 'storyboard' ? '10 Illustrative Moments that define the Ubuntu Model' : 'Real-time ecosystem monitoring and capital allocation')
                             : navItems.find(i => i.id === activeTab)?.label}
                     </p>
                 </div>
@@ -154,6 +361,14 @@ const App: React.FC = () => {
             {renderContent()}
         </div>
       </main>
+
+      <GlobalAudioControls
+        isPlaying={isPlaying}
+        isLoading={isLoadingAudio}
+        currentTitle={currentPlayingTitle}
+        onPlayPause={handleGlobalPlayPause}
+        onStop={stopCurrentAudio}
+      />
     </div>
   );
 };

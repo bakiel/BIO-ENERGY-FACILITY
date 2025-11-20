@@ -38,4 +38,17 @@ export interface Project {
   status: 'Planned' | 'Investment Ready' | 'Active';
   type: string;
   color: string;
+  voiceScriptKey?: string; // New: Key to link to voice script data
+}
+
+export interface VoiceScriptSegment {
+  text: string;
+  audioData?: string; // Base64 encoded audio string
+  title: string; // Title for the audio segment
+}
+
+export interface VoiceScripts {
+  [key: string]: {
+    [segmentId: string]: VoiceScriptSegment;
+  };
 }

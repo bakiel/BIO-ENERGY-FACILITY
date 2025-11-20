@@ -1,4 +1,3 @@
-
 import { Project } from '../types';
 
 export const projects: Project[] = [
@@ -12,7 +11,8 @@ export const projects: Project[] = [
     jobs: 85,
     status: 'Investment Ready',
     type: 'Agriculture',
-    color: 'bg-emerald-500'
+    color: 'bg-emerald-500',
+    voiceScriptKey: 'plan1',
   },
   {
     id: 'plan2',
@@ -24,7 +24,8 @@ export const projects: Project[] = [
     jobs: 62,
     status: 'Investment Ready',
     type: 'Agro-Forestry',
-    color: 'bg-green-600'
+    color: 'bg-green-600',
+    voiceScriptKey: 'plan2',
   },
   {
     id: 'plan3',
@@ -36,7 +37,8 @@ export const projects: Project[] = [
     jobs: 145,
     status: 'Investment Ready',
     type: 'Processing',
-    color: 'bg-amber-500'
+    color: 'bg-amber-500',
+    voiceScriptKey: 'plan3',
   },
   {
     id: 'plan3b',
@@ -48,7 +50,8 @@ export const projects: Project[] = [
     jobs: 70,
     status: 'Investment Ready',
     type: 'Biotech',
-    color: 'bg-purple-600'
+    color: 'bg-purple-600',
+    voiceScriptKey: 'plan3b',
   },
   {
     id: 'plan4',
@@ -60,7 +63,8 @@ export const projects: Project[] = [
     jobs: 53,
     status: 'Investment Ready',
     type: 'Processing',
-    color: 'bg-yellow-500'
+    color: 'bg-yellow-500',
+    voiceScriptKey: 'plan4',
   },
   {
     id: 'plan5',
@@ -72,7 +76,8 @@ export const projects: Project[] = [
     jobs: 85,
     status: 'Investment Ready',
     type: 'Nutraceuticals',
-    color: 'bg-cyan-600'
+    color: 'bg-cyan-600',
+    voiceScriptKey: 'plan5',
   },
   {
     id: 'plan6',
@@ -84,7 +89,8 @@ export const projects: Project[] = [
     jobs: 19,
     status: 'Investment Ready',
     type: 'Bio-Energy',
-    color: 'bg-emerald-600'
+    color: 'bg-emerald-600',
+    voiceScriptKey: 'plan6',
   }
 ];
 

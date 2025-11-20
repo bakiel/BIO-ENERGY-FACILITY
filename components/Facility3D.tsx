@@ -2,7 +2,7 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Text, SoftShadows, Instance, Instances, Environment, Float, Line, Html, useCursor } from '@react-three/drei';
-import { X, Info, Activity, Sprout, Factory, Clock, Calendar, Zap, Droplets, Truck, Recycle, Wind } from 'lucide-react';
+import { X, Info, Activity, Sprout, Factory, Clock, Calendar, Zap, Droplets, Truck, Recycle, Wind, MousePointerClick } from 'lucide-react';
 import * as THREE from 'three';
 
 interface Facility3DProps {
@@ -336,17 +336,17 @@ const LabelCard = ({ position, text, subtext, color = "emerald" }: any) => {
          <div className="pointer-events-none select-none group">
             <div className="flex flex-col items-center transition-transform duration-300 hover:scale-105">
                 {/* Card Body */}
-                <div className="bg-slate-900/95 backdrop-blur-md p-3 rounded-lg border border-slate-700 shadow-2xl min-w-[140px] text-center relative z-10">
-                    <div className={`text-[10px] font-bold uppercase tracking-wider mb-1 text-${color}-400`}>
+                <div className="bg-slate-900/95 backdrop-blur-md p-2 md:p-3 rounded-lg border border-slate-700 shadow-2xl min-w-[100px] md:min-w-[140px] text-center relative z-10">
+                    <div className={`text-[8px] md:text-[10px] font-bold uppercase tracking-wider mb-1 text-${color}-400`}>
                         {subtext || 'Facility'}
                     </div>
-                    <div className="text-sm font-bold text-white leading-tight whitespace-nowrap">
+                    <div className="text-xs md:text-sm font-bold text-white leading-tight whitespace-nowrap">
                         {text}
                     </div>
                 </div>
                 
                 {/* Connector Line */}
-                <div className="h-6 w-0.5 bg-slate-500/50 mt-0"></div>
+                <div className="h-4 md:h-6 w-0.5 bg-slate-500/50 mt-0"></div>
                 
                 {/* Anchor Dot */}
                 <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>
@@ -1438,6 +1438,7 @@ const Facility3D: React.FC<Facility3DProps> = ({ projectId }) => {
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<'layout' | 'evolution'>('layout');
     const [timelineYear, setTimelineYear] = useState(1);
+    const [isInteracting, setIsInteracting] = useState(false);
     
     // Data lookup based on project
     let data: Record<string, FacilityObjectInfo> = facilityDataPlan6;
@@ -1453,42 +1454,66 @@ const Facility3D: React.FC<Facility3DProps> = ({ projectId }) => {
     const activeItem = selectedId ? data[selectedId] : null;
 
     return (
-        <div className="h-[600px] bg-slate-900 rounded-xl overflow-hidden relative animate-fade-in">
+        <div className="h-[400px] md:h-[600px] bg-slate-900 rounded-xl overflow-hidden relative animate-fade-in group">
+             {/* Interaction Overlay for Mobile/Touch to prevent scroll hijacking */}
+             {!isInteracting && (
+                <div 
+                    className="absolute inset-0 z-20 flex items-center justify-center bg-black/20 backdrop-blur-[1px] cursor-pointer transition-opacity duration-300"
+                    onClick={() => setIsInteracting(true)}
+                    onTouchStart={() => setIsInteracting(true)}
+                >
+                    <div className="bg-white/90 px-5 py-2.5 rounded-full font-bold text-slate-900 flex items-center gap-2 shadow-xl transform transition-transform hover:scale-105">
+                        <MousePointerClick className="w-5 h-5 text-emerald-600" />
+                        <span className="text-sm">Tap to Explore 3D Model</span>
+                    </div>
+                </div>
+            )}
+
+            {/* Close Interaction Button (Mobile Only) */}
+            {isInteracting && (
+                <button 
+                    className="absolute top-4 right-4 z-30 bg-slate-900/80 text-white p-2 rounded-full md:hidden backdrop-blur-sm border border-slate-700 shadow-lg"
+                    onClick={(e) => { e.stopPropagation(); setIsInteracting(false); setSelectedId(null); }}
+                >
+                    <X className="w-5 h-5" />
+                </button>
+            )}
+
             {/* Overlay UI */}
-            <div className="absolute top-4 left-4 z-10 bg-slate-900/80 backdrop-blur-md p-4 rounded-lg border border-slate-700 max-w-xs">
-                <h3 className="text-white font-bold flex items-center gap-2">
+            <div className={`absolute top-4 left-4 z-10 bg-slate-900/80 backdrop-blur-md p-4 rounded-lg border border-slate-700 max-w-[200px] md:max-w-xs transition-opacity duration-300 ${isInteracting ? 'opacity-100' : 'opacity-40 md:opacity-100'}`}>
+                <h3 className="text-white font-bold flex items-center gap-2 text-sm md:text-base">
                     <Info className="w-4 h-4 text-emerald-400" />
-                    {projectId === 'master' ? 'Master Cluster Visualization' : (projectId === 'plan2' && viewMode === 'evolution' ? 'Planting System Evolution' : 'Facility Explorer')}
+                    {projectId === 'master' ? 'Master Cluster' : (projectId === 'plan2' && viewMode === 'evolution' ? 'Growth Timeline' : 'Facility Explorer')}
                 </h3>
-                <p className="text-slate-300 text-xs mt-1">
+                <p className="text-slate-300 text-[10px] md:text-xs mt-1 hidden md:block">
                     {projectId === 'master'
-                        ? 'A realtime digital twin of the entire Ubuntu Restoration Farms ecosystem. Hover over the coloured flow lines to view the specific circular economy loops connecting the facilities.'
+                        ? 'A realtime digital twin of the entire Ubuntu Restoration Farms ecosystem.'
                         : (projectId === 'plan2' && viewMode === 'evolution' 
-                        ? 'Visualize the 7-year timeline of tree growth and soybean intercropping dynamics.'
-                        : 'Click on highlighted facility components to view technical specifications.')
+                        ? 'Visualize the 7-year timeline.'
+                        : 'Click on highlighted components to view specs.')
                     }
                 </p>
                 
                 {/* Plan 2 Specific Controls */}
                 {projectId === 'plan2' && (
-                    <div className="mt-4 space-y-3">
+                    <div className="mt-2 md:mt-4 space-y-3 pointer-events-auto">
                         <div className="flex bg-slate-800 p-1 rounded-lg">
                             <button 
-                                onClick={() => setViewMode('layout')}
-                                className={`flex-1 py-1 px-2 text-xs font-medium rounded-md transition-colors flex items-center justify-center gap-1 ${viewMode === 'layout' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                                onClick={(e) => { e.stopPropagation(); setViewMode('layout'); setIsInteracting(true); }}
+                                className={`flex-1 py-1 px-2 text-[10px] md:text-xs font-medium rounded-md transition-colors flex items-center justify-center gap-1 ${viewMode === 'layout' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'}`}
                             >
                                 <Factory className="w-3 h-3" /> Layout
                             </button>
                             <button 
-                                onClick={() => setViewMode('evolution')}
-                                className={`flex-1 py-1 px-2 text-xs font-medium rounded-md transition-colors flex items-center justify-center gap-1 ${viewMode === 'evolution' ? 'bg-emerald-600 text-white ring-2 ring-emerald-400/50 animate-pulse' : 'text-slate-400 hover:text-white'}`}
+                                onClick={(e) => { e.stopPropagation(); setViewMode('evolution'); setIsInteracting(true); }}
+                                className={`flex-1 py-1 px-2 text-[10px] md:text-xs font-medium rounded-md transition-colors flex items-center justify-center gap-1 ${viewMode === 'evolution' ? 'bg-emerald-600 text-white ring-2 ring-emerald-400/50 animate-pulse' : 'text-slate-400 hover:text-white'}`}
                             >
                                 <Sprout className="w-3 h-3" /> Growth
                             </button>
                         </div>
 
                         {viewMode === 'evolution' && (
-                            <div className="bg-slate-800 p-3 rounded-lg border border-slate-700">
+                            <div className="bg-slate-800 p-3 rounded-lg border border-slate-700" onPointerDown={(e) => e.stopPropagation()}>
                                 <div className="flex justify-between items-center mb-2 text-xs text-white font-bold">
                                     <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-emerald-400" /> Timeline</span>
                                     <span>Year {timelineYear}</span>
@@ -1502,49 +1527,8 @@ const Facility3D: React.FC<Facility3DProps> = ({ projectId }) => {
                                     onChange={(e) => setTimelineYear(parseInt(e.target.value))}
                                     className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
                                 />
-                                <div className="flex justify-between mt-2 text-[10px] text-slate-400">
-                                    <span>Establishment</span>
-                                    <span>Production</span>
-                                    <span>Maturity</span>
-                                </div>
-                                <div className="mt-3 pt-3 border-t border-slate-700 grid grid-cols-2 gap-2">
-                                    <div className="text-center">
-                                        <div className="text-[10px] text-slate-400">Soy Density</div>
-                                        <div className={`text-xs font-bold ${timelineYear <= 3 ? 'text-green-400' : (timelineYear <= 5 ? 'text-yellow-400' : 'text-red-400')}`}>
-                                            {timelineYear <= 3 ? '100%' : (timelineYear <= 5 ? '40%' : '0%')}
-                                        </div>
-                                    </div>
-                                    <div className="text-center">
-                                        <div className="text-[10px] text-slate-400">Tree Yield</div>
-                                        <div className="text-xs font-bold text-emerald-400">
-                                            {timelineYear < 4 ? '0%' : (timelineYear < 6 ? '35%' : '100%')}
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
                         )}
-                    </div>
-                )}
-
-                 {/* Master View Legend */}
-                {projectId === 'master' && (
-                    <div className="mt-4 space-y-2 text-[10px]">
-                         <div className="flex items-center gap-2">
-                             <div className="w-8 h-0.5 bg-yellow-400 border border-yellow-400"></div>
-                             <span className="text-slate-300">Energy Flow</span>
-                         </div>
-                         <div className="flex items-center gap-2">
-                             <div className="w-8 h-0.5 bg-green-600 border border-green-600"></div>
-                             <span className="text-slate-300">Feedstock/Supply</span>
-                         </div>
-                         <div className="flex items-center gap-2">
-                             <div className="w-8 h-0.5 bg-amber-700 border border-amber-700"></div>
-                             <span className="text-slate-300">Biomass/Waste Loop</span>
-                         </div>
-                         <div className="flex items-center gap-2">
-                             <div className="w-8 h-0.5 bg-slate-600 border border-slate-600"></div>
-                             <span className="text-slate-300">Regeneration Loop</span>
-                         </div>
                     </div>
                 )}
             </div>
@@ -1557,11 +1541,11 @@ const Facility3D: React.FC<Facility3DProps> = ({ projectId }) => {
                              <span className="text-xs font-bold uppercase text-emerald-600">{activeItem.type}</span>
                              <h4 className="text-lg font-bold text-slate-900">{activeItem.name}</h4>
                         </div>
-                        <button onClick={() => setSelectedId(null)} className="text-slate-400 hover:text-slate-600">
+                        <button onClick={(e) => { e.stopPropagation(); setSelectedId(null); }} className="text-slate-400 hover:text-slate-600">
                             <X className="h-5 w-5" />
                         </button>
                     </div>
-                    <p className="text-sm text-slate-600 mb-3">{activeItem.description}</p>
+                    <p className="text-sm text-slate-600 mb-3 line-clamp-3 md:line-clamp-none">{activeItem.description}</p>
                     
                     <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100">
                         <div>
@@ -1577,19 +1561,24 @@ const Facility3D: React.FC<Facility3DProps> = ({ projectId }) => {
                 </div>
             )}
 
-            <Canvas shadows camera={{ position: projectId === 'master' ? [40, 25, 40] : [40, 40, 40], fov: 45 }}>
+            <Canvas 
+                shadows 
+                camera={{ position: projectId === 'master' ? [40, 25, 40] : [40, 40, 40], fov: 45 }}
+                className={`${isInteracting ? 'cursor-move' : 'pointer-events-none'}`}
+            >
                 <color attach="background" args={['#f0f9ff']} />
                 <fog attach="fog" args={['#f0f9ff', 60, 150]} />
                 
                 {/* Controls */}
                 <OrbitControls 
                     makeDefault 
-                    autoRotate={false}
+                    autoRotate={projectId === 'master' && !isInteracting} // Auto rotate master view if idle
                     autoRotateSpeed={0.5}
                     minPolarAngle={0} 
                     maxPolarAngle={Math.PI / 2.2}
                     maxDistance={projectId === 'master' ? 180 : 100}
                     minDistance={20}
+                    enabled={isInteracting} // Disable orbit when not interacting to allow scroll
                 />
 
                 {/* Soft Shadows */}
@@ -1598,7 +1587,7 @@ const Facility3D: React.FC<Facility3DProps> = ({ projectId }) => {
                 {/* The Scene Content */}
                 <Scene 
                     selectedId={selectedId} 
-                    onSelect={setSelectedId} 
+                    onSelect={(id) => { if(isInteracting) setSelectedId(id); }} 
                     projectId={projectId} 
                     viewMode={viewMode} 
                     timelineYear={timelineYear} 

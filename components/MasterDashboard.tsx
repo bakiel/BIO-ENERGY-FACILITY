@@ -1,11 +1,17 @@
-
 import React from 'react';
 import { projects, masterPlanStats } from '../data/projects';
 import { Map, Users, Wallet, TrendingUp, ArrowRight, Factory, Sprout, Droplets, Sun, Beaker, Layout, MapPin, CheckCircle2 } from 'lucide-react';
 import Facility3D from './Facility3D';
+import AudioButton from './AudioButton';
+import { voiceScripts } from '../data/voiceScripts';
 
 interface MasterDashboardProps {
   onSelectProject: (projectId: string) => void;
+  isPlaying: boolean;
+  currentPlayingId: string | null;
+  isLoadingAudio: boolean;
+  fetchAndPlayAudio: (text: string, id: string, title: string) => void;
+  pauseAudio: () => void;
 }
 
 const UbuntuLogo = ({ className }: { className?: string }) => (
@@ -14,42 +20,55 @@ const UbuntuLogo = ({ className }: { className?: string }) => (
   </div>
 );
 
-const MasterDashboard: React.FC<MasterDashboardProps> = ({ onSelectProject }) => {
+const MasterDashboard: React.FC<MasterDashboardProps> = ({ onSelectProject, isPlaying, currentPlayingId, isLoadingAudio, fetchAndPlayAudio, pauseAudio }) => {
+  const masterIntro = voiceScripts.masterDashboard.intro;
 
   return (
     <div className="space-y-8 animate-fade-in">
       {/* Master Stats Header */}
-      <div className="bg-slate-900 rounded-2xl p-8 text-white relative overflow-hidden shadow-xl group">
+      <div className="bg-slate-900 rounded-2xl p-4 md:p-8 text-white relative overflow-hidden shadow-xl group">
         <div className="absolute inset-0 z-0">
              <img 
                 src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=2832&auto=format&fit=crop" 
                 alt="Farm Panorama" 
                 className="w-full h-full object-cover opacity-20 group-hover:opacity-25 transition-opacity duration-700"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/95 to-slate-900/50"></div>
+            <div className="absolute inset-0 bg-gradient-to-b md:bg-gradient-to-r from-slate-900 via-slate-900/95 to-slate-900/50"></div>
         </div>
         
         <div className="relative z-10">
-          <div className="flex flex-col md:flex-row justify-between items-start gap-6">
+          <div className="flex flex-col lg:flex-row justify-between items-start gap-6">
             <div className="max-w-3xl">
-                <div className="flex items-center gap-5 mb-6">
-                    <UbuntuLogo className="h-20 w-20 flex-shrink-0" />
+                <div className="flex items-center gap-3 md:gap-5 mb-6">
+                    <UbuntuLogo className="h-16 w-16 md:h-20 md:w-20 flex-shrink-0" />
                     <div>
-                        <h2 className="text-3xl md:text-4xl font-bold text-white tracking-tight leading-tight">Ubuntu Restoration Farms</h2>
-                        <p className="text-emerald-400 font-bold text-lg">South Africa's First Integrated Regenerative Food System</p>
+                        <h2 className="text-2xl md:text-4xl font-bold text-white tracking-tight leading-tight flex items-center">
+                          Ubuntu Restoration Farms
+                          <AudioButton
+                              id="masterDashboard-intro"
+                              title={masterIntro.title}
+                              text={masterIntro.text}
+                              isPlaying={isPlaying}
+                              currentPlayingId={currentPlayingId}
+                              isLoadingAudio={isLoadingAudio}
+                              fetchAndPlayAudio={fetchAndPlayAudio}
+                              pauseAudio={pauseAudio}
+                          />
+                        </h2>
+                        <p className="text-emerald-400 font-bold text-sm md:text-lg">South Africa's First Integrated Regenerative Food System</p>
                     </div>
                 </div>
                 
-                <p className="text-slate-300 text-lg leading-relaxed mb-6 border-l-4 border-emerald-500/50 pl-4">
+                <p className="text-slate-300 text-sm md:text-lg leading-relaxed mb-6 border-l-4 border-emerald-500/50 pl-4">
                     A 21-Year Vision Becoming Reality. Transforming 645 hectares of Limpopo soil into a <span className="text-white font-bold">R1.239 billion annual revenue</span> engine with complete energy and logistics independence.
                 </p>
             </div>
-            <div className="bg-white/5 backdrop-blur-md p-5 rounded-xl border border-white/10 min-w-[260px] shadow-lg">
+            <div className="bg-white/5 backdrop-blur-md p-4 md:p-5 rounded-xl border border-white/10 w-full lg:min-w-[260px] lg:w-auto shadow-lg">
                 <div className="flex items-center gap-2 text-emerald-300 text-xs font-bold uppercase mb-3 tracking-wider">
                     <MapPin className="h-4 w-4" /> Host Property Spec
                 </div>
-                <p className="text-white font-bold text-xl mb-1">Modimolle, Limpopo</p>
-                <div className="mt-3 space-y-2 text-sm text-slate-300">
+                <p className="text-white font-bold text-lg md:text-xl mb-1">Modimolle, Limpopo</p>
+                <div className="mt-3 space-y-2 text-xs md:text-sm text-slate-300">
                   <p className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-400"/> 445ha Premier Farm</p>
                   <p className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-400"/> 22ha Pecan Trees</p>
                   <p className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-400"/> 9 Boreholes & 14ha Pivot</p>
@@ -61,27 +80,27 @@ const MasterDashboard: React.FC<MasterDashboardProps> = ({ onSelectProject }) =>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-8 pt-8 border-t border-slate-800">
             <div>
                 <div className="flex items-center gap-2 text-slate-400 text-xs font-bold uppercase mb-1">
-                    <Wallet className="h-4 w-4" /> Total Investment
+                    <Wallet className="h-3 w-3 md:h-4 md:w-4" /> Total Investment
                 </div>
-                <div className="text-2xl font-bold text-white">{masterPlanStats.totalInvestment}</div>
+                <div className="text-xl md:text-2xl font-bold text-white">{masterPlanStats.totalInvestment}</div>
             </div>
             <div>
                 <div className="flex items-center gap-2 text-slate-400 text-xs font-bold uppercase mb-1">
-                    <Users className="h-4 w-4" /> Total Jobs Impact
+                    <Users className="h-3 w-3 md:h-4 md:w-4" /> Total Jobs Impact
                 </div>
-                <div className="text-2xl font-bold text-blue-400">{masterPlanStats.totalJobs}</div>
+                <div className="text-xl md:text-2xl font-bold text-blue-400">{masterPlanStats.totalJobs}</div>
             </div>
             <div>
                 <div className="flex items-center gap-2 text-slate-400 text-xs font-bold uppercase mb-1">
-                    <TrendingUp className="h-4 w-4" /> Year 7 Revenue
+                    <TrendingUp className="h-3 w-3 md:h-4 md:w-4" /> Year 7 Revenue
                 </div>
-                <div className="text-2xl font-bold text-emerald-400">{masterPlanStats.blendedROI}</div>
+                <div className="text-xl md::text-2xl font-bold text-emerald-400">{masterPlanStats.blendedROI}</div>
             </div>
             <div>
                 <div className="flex items-center gap-2 text-slate-400 text-xs font-bold uppercase mb-1">
-                    <Layout className="h-4 w-4" /> Systems
+                    <Layout className="h-3 w-3 md:h-4 md:w-4" /> Systems
                 </div>
-                <div className="text-xl font-bold text-white">7 Integrated Plans</div>
+                <div className="text-lg md:text-xl font-bold text-white">7 Integrated Plans</div>
             </div>
           </div>
         </div>
@@ -128,9 +147,23 @@ const MasterDashboard: React.FC<MasterDashboardProps> = ({ onSelectProject }) =>
                             </span>
                         </div>
                         
-                        <h4 className="text-lg font-bold text-slate-900 mb-1 group-hover:text-emerald-700 transition-colors">{project.name}</h4>
+                        <h4 className="text-lg font-bold text-slate-900 mb-1 group-hover:text-emerald-700 transition-colors flex items-center">
+                          {project.name}
+                          {project.voiceScriptKey && voiceScripts.masterDashboard[project.voiceScriptKey] && (
+                            <AudioButton
+                              id={`masterDashboard-${project.voiceScriptKey}`}
+                              title={voiceScripts.masterDashboard[project.voiceScriptKey].title}
+                              text={voiceScripts.masterDashboard[project.voiceScriptKey].text}
+                              isPlaying={isPlaying}
+                              currentPlayingId={currentPlayingId}
+                              isLoadingAudio={isLoadingAudio}
+                              fetchAndPlayAudio={fetchAndPlayAudio}
+                              pauseAudio={pauseAudio}
+                            />
+                          )}
+                        </h4>
                         <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-3">{project.location}</p>
-                        <p className="text-sm text-slate-600 mb-6 flex-1 leading-relaxed">{project.shortDesc}</p>
+                        <p className="text-sm text-slate-600 mb-6 flex-1 leading-relaxed line-clamp-3">{project.shortDesc}</p>
 
                         <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100">
                             <div>
