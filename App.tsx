@@ -13,6 +13,7 @@ import SkeletonLoader from './components/SkeletonLoader';
 import LandingPage from './components/LandingPage';
 import AnimationStoryboard from './components/AnimationStoryboard';
 import GlobalAudioControls from './components/GlobalAudioControls';
+import AppLoader from './components/AppLoader';
 import { NavItem } from './types';
 import { projects } from './data/projects';
 import { GoogleGenAI, Modality } from '@google/genai';
@@ -58,6 +59,9 @@ async function decodeAudioData(
 }
 
 const App: React.FC = () => {
+  // State for Initial App Load
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  
   const [showLanding, setShowLanding] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeProjectId, setActiveProjectId] = useState<string | 'master'>('master');
@@ -318,6 +322,11 @@ const App: React.FC = () => {
     }
   };
 
+  // --- RENDER LOGIC ---
+  if (isInitialLoad) {
+      return <AppLoader onComplete={() => setIsInitialLoad(false)} />;
+  }
+
   if (showLanding) {
       return <LandingPage onEnter={handleLandingEnter} {...{ isPlaying, currentPlayingId, isLoadingAudio, fetchAndPlayAudio, pauseAudio }} />;
   }
@@ -374,3 +383,4 @@ const App: React.FC = () => {
 };
 
 export default App;
+    

@@ -2,7 +2,7 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Text, SoftShadows, Instance, Instances, Environment, Float, Line, Html, useCursor } from '@react-three/drei';
-import { X, Info, Activity, Sprout, Factory, Clock, Calendar, Zap, Droplets, Truck, Recycle, Wind, MousePointerClick } from 'lucide-react';
+import { X, Info, Activity, Sprout, Factory, Clock, Calendar, Zap, Droplets, Truck, Recycle, Wind, MousePointerClick, DollarSign, BarChart3, ShieldCheck } from 'lucide-react';
 import * as THREE from 'three';
 
 interface Facility3DProps {
@@ -18,7 +18,120 @@ interface FacilityObjectInfo {
     description: string;
     capacity?: string;
     height?: number;
+    stats?: { label: string; value: string; icon: any; color: string }[]; // Optional extended stats
 }
+
+// Master Plan Layout Data
+const facilityDataMaster: Record<string, FacilityObjectInfo> = {
+    'p1_packhouse': {
+        id: 'p1_packhouse',
+        name: "Core Farm Hub",
+        type: "Plan 1: Agriculture",
+        description: "The operational heart of the estate. Features a 2,000m² packhouse, cold storage, and logistics center handling 1,149T of fresh produce annually.",
+        capacity: "Central Node",
+        height: 6,
+        stats: [
+            { label: "Year 1 Rev", value: "R 34.3M", icon: DollarSign, color: "text-emerald-400" },
+            { label: "Jobs", value: "455", icon: Activity, color: "text-blue-400" }
+        ]
+    },
+    'p1_solar': {
+        id: 'p1_solar',
+        name: "500kVA Solar Array",
+        type: "Plan 1: Energy",
+        description: "Primary renewable energy source for the Core Farm. 490 kWp capacity ensures irrigation and processing resilience against grid failure.",
+        capacity: "490 kWp",
+        height: 1,
+        stats: [
+            { label: "Uptime", value: "100%", icon: Zap, color: "text-amber-400" },
+            { label: "Savings", value: "R 2.1M/Yr", icon: DollarSign, color: "text-emerald-400" }
+        ]
+    },
+    'p1_water': {
+        id: 'p1_water',
+        name: "Water Security Hub",
+        type: "Plan 1: Utilities",
+        description: "19ML Dam and filtration network connecting 9 boreholes. Provides drought-proof irrigation security for the entire cluster.",
+        capacity: "319KL Storage",
+        height: 4,
+        stats: [
+            { label: "Capacity", value: "197M L/Yr", icon: Droplets, color: "text-cyan-400" },
+            { label: "Risk", value: "0% (Drought)", icon: Activity, color: "text-emerald-400" }
+        ]
+    },
+    'p2_orchard': {
+        id: 'p2_orchard',
+        name: "Agroforestry System",
+        type: "Plan 2: Dairy & Nuts",
+        description: "180ha of Macadamia trees intercropped with Soybeans. Creates a microclimate reducing water use by 20% while producing premium dairy feedstock.",
+        capacity: "180 Hectares",
+        height: 4,
+        stats: [
+            { label: "Year 7 Rev", value: "R 196.8M", icon: DollarSign, color: "text-green-400" },
+            { label: "Carbon", value: "-9,000 T", icon: Wind, color: "text-teal-400" }
+        ]
+    },
+    'p3_factory': {
+        id: 'p3_factory',
+        name: "Plant Protein Factory",
+        type: "Plan 3: Processing",
+        description: "Advanced extrusion facility producing 858T of high-fidelity plant meat annually. Includes specialized Seitan washing and HMMA texturization.",
+        capacity: "3.4 T/Day",
+        height: 7,
+        stats: [
+            { label: "Year 3 Rev", value: "R 114.9M", icon: DollarSign, color: "text-amber-400" },
+            { label: "Govt Orders", value: "28%", icon: Activity, color: "text-blue-400" }
+        ]
+    },
+    'p3b_cluster': { 
+        id: 'p3b_cluster',
+        name: "Mycology Cluster",
+        type: "Plan 3B: Biotech",
+        description: "High-tech climate controlled containers for Lion's Mane cultivation. Converts farm waste (prunings) into high-value medicinal extracts.",
+        capacity: "16 Containers",
+        height: 3,
+        stats: [
+            { label: "Year 3 Rev", value: "R 30.8M", icon: DollarSign, color: "text-purple-400" },
+            { label: "Margin", value: "40%", icon: BarChart3, color: "text-emerald-400" }
+        ]
+    },
+    'p4_cave': {
+        id: 'p4_cave',
+        name: "Cheese Caves",
+        type: "Plan 4: Artisan",
+        description: "Underground maturation facility for vegan cheese. Uses traditional culturing and waxing to create shelf-stable, export-grade products.",
+        capacity: "20k Wheels",
+        height: 4,
+        stats: [
+            { label: "Year 7 Rev", value: "R 39.6M", icon: DollarSign, color: "text-yellow-400" },
+            { label: "Pollination", value: "+40% Yield", icon: Sprout, color: "text-amber-400" }
+        ]
+    },
+    'p5_greenhouse': {
+        id: 'p5_greenhouse',
+        name: "Pharma Greenhouse",
+        type: "Plan 5: Nutraceuticals",
+        description: "10,240m² precision environment stimulating sulforaphane production in broccoli sprouts. Integrated freeze-drying for pharma-grade potency.",
+        capacity: "10,240m²",
+        height: 5,
+        stats: [
+            { label: "Year 3 Rev", value: "R 575.2M", icon: DollarSign, color: "text-cyan-400" },
+            { label: "EBITDA", value: "73.8%", icon: BarChart3, color: "text-emerald-400" }
+        ]
+    },
+    'p6_reactor': {
+        id: 'p6_reactor',
+        name: "Bio-Refinery",
+        type: "Plan 6: Energy",
+        description: "Pyrolysis reactor converting diverse biomass into 3.45M litres of Bio-diesel. Powers the entire estate's logistics fleet.",
+        capacity: "3.45M Litres",
+        height: 10,
+        stats: [
+            { label: "Year 3 Rev", value: "R 89.8M", icon: DollarSign, color: "text-emerald-400" },
+            { label: "DSCR", value: "12.9x", icon: ShieldCheck, color: "text-blue-400" }
+        ]
+    }
+};
 
 // Plan 6 Layout
 const facilityDataPlan6: Record<string, FacilityObjectInfo> = {
@@ -330,10 +443,10 @@ const facilityDataPlan1: Record<string, FacilityObjectInfo> = {
 
 // --- 3D Components ---
 
-const LabelCard = ({ position, text, subtext, color = "emerald" }: any) => {
+const LabelCard = ({ position, text, subtext, color = "emerald", scale = 1 }: any) => {
   return (
     <Html position={position} center distanceFactor={20} occlude>
-         <div className="pointer-events-none select-none group">
+         <div className="pointer-events-none select-none group" style={{ transform: `scale(${scale})` }}>
             <div className="flex flex-col items-center transition-transform duration-300 hover:scale-105">
                 {/* Card Body */}
                 <div className="bg-slate-900/95 backdrop-blur-md p-2 md:p-3 rounded-lg border border-slate-700 shadow-2xl min-w-[100px] md:min-w-[140px] text-center relative z-10">
@@ -355,8 +468,6 @@ const LabelCard = ({ position, text, subtext, color = "emerald" }: any) => {
     </Html>
   )
 }
-
-const Label = ({ position, text, subtext, color }: any) => <LabelCard position={position} text={text} subtext={subtext} color={color} />;
 
 interface InteractiveProps {
     id: string;
@@ -453,7 +564,6 @@ const Pile = ({ id, position, color, onSelect, isSelected }: InteractiveProps) =
 }
 
 const SelectionIndicator = ({ targetPosition, targetHeight }: { targetPosition: [number, number, number], targetHeight: number }) => {
-    // Removed bouncing animation for static stability
     return (
         <group position={[targetPosition[0], targetPosition[1] + targetHeight + 4, targetPosition[2]]}>
              <mesh rotation={[Math.PI, 0, 0]}>
@@ -477,9 +587,10 @@ interface FlowProps {
         icon: any;
     };
     arcHeight?: number;
+    dashed?: boolean;
 }
 
-const FlowLine = ({ start, end, color, label, details, arcHeight = 15 }: FlowProps) => {
+const FlowLine = ({ start, end, color, label, details, arcHeight = 15, dashed = true }: FlowProps) => {
     const [hovered, setHover] = useState(false);
     useCursor(hovered);
     const ref = useRef<any>(null);
@@ -500,7 +611,7 @@ const FlowLine = ({ start, end, color, label, details, arcHeight = 15 }: FlowPro
 
     // Animate flow
     useFrame((state) => {
-        if (ref.current) {
+        if (ref.current && dashed) {
             ref.current.material.dashOffset -= 0.01;
         }
     });
@@ -516,7 +627,7 @@ const FlowLine = ({ start, end, color, label, details, arcHeight = 15 }: FlowPro
                 points={points} 
                 color={hovered ? '#ffffff' : color} 
                 lineWidth={hovered ? 5 : 3} 
-                dashed
+                dashed={dashed}
                 dashScale={2}
                 dashSize={2}
                 gapSize={1}
@@ -540,7 +651,7 @@ const FlowLine = ({ start, end, color, label, details, arcHeight = 15 }: FlowPro
                     arcHeight + 2,
                     (start[2] + end[2]) / 2
                 ]} center>
-                    <div className="bg-slate-900/95 backdrop-blur-md text-white p-3 rounded-lg shadow-2xl border border-slate-600 min-w-[180px] animate-fade-in pointer-events-none">
+                    <div className="bg-slate-900/95 backdrop-blur-md text-white p-3 rounded-lg shadow-2xl border border-slate-600 min-w-[180px] animate-fade-in pointer-events-none scale-75 origin-center">
                         <div className="flex items-center gap-2 border-b border-slate-700 pb-2 mb-2">
                             <div className="p-1.5 bg-slate-800 rounded-md">
                                 <Icon className="w-3 h-3 text-emerald-400" />
@@ -566,6 +677,65 @@ const FlowLine = ({ start, end, color, label, details, arcHeight = 15 }: FlowPro
         </group>
     );
 };
+
+// --- HEXAGON BASE COMPONENT ---
+const HexBase = ({ position, color, label, radius = 24 }: { position: [number, number, number], color: string, label?: string, radius?: number }) => {
+    return (
+        <group position={position}>
+             {/* Tier 1: Foundation */}
+             <mesh receiveShadow rotation={[0, Math.PI/6, 0]} position={[0, 0.2, 0]}>
+                 <cylinderGeometry args={[radius, radius - 1, 0.4, 6]} />
+                 <meshStandardMaterial color="#e2e8f0" />
+             </mesh>
+             
+             {/* Tier 2: Platform Surface */}
+             <mesh receiveShadow rotation={[0, Math.PI/6, 0]} position={[0, 0.5, 0]}>
+                 <cylinderGeometry args={[radius - 1, radius - 1, 0.2, 6]} />
+                 <meshStandardMaterial color="#f8fafc" />
+             </mesh>
+
+             {/* Tier 3: Colored Rim/Glow */}
+             <mesh rotation={[0, Math.PI/6, 0]} position={[0, 0.55, 0]}>
+                 <ringGeometry args={[radius - 1.5, radius - 1, 6]} />
+                 <meshBasicMaterial color={color} transparent opacity={0.4} side={THREE.DoubleSide} />
+             </mesh>
+
+             {/* Outline for definition */}
+              <mesh rotation={[Math.PI/2, 0, 0]} position={[0, 0.6, 0]}>
+                  <ringGeometry args={[radius - 1.1, radius - 1, 6]} />
+                  <meshBasicMaterial color={color} />
+              </mesh>
+
+             {label && (
+                 <Html position={[0, 4, radius + 2]} center>
+                     <div className="flex flex-col items-center">
+                        <div className={`w-1 h-8 bg-${color.replace('#','')} opacity-50 mb-1`}></div>
+                        <div className={`text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-white/90 px-3 py-1 rounded-full shadow-sm border border-slate-200 whitespace-nowrap backdrop-blur-sm`}>
+                            {label}
+                        </div>
+                     </div>
+                 </Html>
+             )}
+        </group>
+    )
+}
+
+// --- GROUND CONNECTION COMPONENT ---
+const ConnectionPath = ({ start, end, type = 'road' }: { start: [number, number, number], end: [number, number, number], type?: 'road' | 'pipe' }) => {
+    const points = useMemo(() => [new THREE.Vector3(...start), new THREE.Vector3(...end)], [start, end]);
+    const color = type === 'road' ? '#e2e8f0' : '#94a3b8';
+    const width = type === 'road' ? 8 : 2;
+    const height = type === 'road' ? 0.6 : 0.8;
+
+    return (
+        <group>
+             {/* Physical "Road" or "Pipe" */}
+            <Line points={points} color={color} lineWidth={width} position={[0, height, 0]} transparent opacity={0.6} />
+            {/* Center divider detail */}
+            {type === 'road' && <Line points={points} color="#cbd5e1" lineWidth={1} position={[0, height + 0.05, 0]} dashed dashSize={2} gapSize={2} />}
+        </group>
+    )
+}
 
 // --- SPECIAL PLAN 2: AGROFORESTRY EVOLUTION SCENE ---
 
@@ -667,178 +837,266 @@ const AgroforestryEvolutionScene = ({ year }: { year: number }) => {
 };
 
 // --- MASTER SCENE COMPONENT ---
-const MasterScene = ({ onSelect }: { onSelect: (id: string | null) => void }) => {
-    // Coordinates
-    const P1_CENTER = [0, 0, 0] as [number, number, number];
-    const P6_ENERGY = [-30, 0, 30] as [number, number, number];
-    const P5_PHARMA = [-35, 0, -20] as [number, number, number];
-    const P3_MEAT = [30, 0, 10] as [number, number, number];
-    const P2_ORCHARD = [0, 0, -40] as [number, number, number];
-    const P4_CHEESE = [35, 0, -25] as [number, number, number];
-    const P3B_MUSHROOMS = [-10, 0, 30] as [number, number, number];
+const MasterScene = ({ onSelect, selectedId }: { onSelect: (id: string | null) => void, selectedId: string | null }) => {
+    // Organized Hexagonal Grid Layout
+    // Radius 50 ensures good spacing between centers.
+    const R = 55;
+    const POS = {
+        P1: [0, 0, 0] as [number, number, number],              // CENTER: Farm/Hub
+        P2: [0, 0, -R] as [number, number, number],             // NORTH: Orchard (Large area)
+        P4: [R * 0.866, 0, -R * 0.5] as [number, number, number], // NORTH-EAST: Cheese (Near Orchard)
+        P3: [R * 0.866, 0, R * 0.5] as [number, number, number],  // SOUTH-EAST: Meat (Near Farm Inputs)
+        P3B: [0, 0, R] as [number, number, number],             // SOUTH: Mushrooms (Near Farm Waste)
+        P6: [-R * 0.866, 0, R * 0.5] as [number, number, number], // SOUTH-WEST: Energy (Industrial Zone)
+        P5: [-R * 0.866, 0, -R * 0.5] as [number, number, number] // NORTH-WEST: Pharma (High Tech Zone)
+    };
+
+    // Ring Road Path (connecting outer nodes)
+    const ringPoints = [
+        new THREE.Vector3(...POS.P2),
+        new THREE.Vector3(...POS.P4),
+        new THREE.Vector3(...POS.P3),
+        new THREE.Vector3(...POS.P3B),
+        new THREE.Vector3(...POS.P6),
+        new THREE.Vector3(...POS.P5),
+        new THREE.Vector3(...POS.P2) // Close loop
+    ];
+    const ringCurve = new THREE.CatmullRomCurve3(ringPoints, true, 'catmullrom', 0.1); // Low tension for straight lines
+    const ringGeometry = new THREE.TubeGeometry(ringCurve, 64, 0.5, 8, true);
 
     return (
         <group onPointerMissed={() => onSelect(null)}>
-             <ambientLight intensity={0.7} />
+             <ambientLight intensity={0.8} />
              <directionalLight position={[50, 80, 40]} intensity={1.5} castShadow shadow-mapSize={[2048, 2048]} />
-            
-             {/* Vast Terrain */}
-             <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]} receiveShadow>
-                <planeGeometry args={[200, 200]} />
-                <meshStandardMaterial color="#ecfccb" />
+             
+             {/* Large Ground Plane with Subtle Grid */}
+             <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.2, 0]} receiveShadow>
+                <planeGeometry args={[400, 400]} />
+                <meshStandardMaterial color="#f1f5f9" />
+             </mesh>
+             <gridHelper args={[400, 60, '#cbd5e1', '#f1f5f9']} position={[0, -0.1, 0]} />
+
+             {/* --- INFRASTRUCTURE RINGS --- */}
+             <mesh geometry={ringGeometry} position={[0, 0.5, 0]}>
+                <meshStandardMaterial color="#94a3b8" transparent opacity={0.3} />
              </mesh>
 
+             {/* --- INFRASTRUCTURE SPOKES --- */}
+             <ConnectionPath start={POS.P1} end={POS.P2} type="road" />
+             <ConnectionPath start={POS.P1} end={POS.P3} type="road" />
+             <ConnectionPath start={POS.P1} end={POS.P4} type="road" />
+             <ConnectionPath start={POS.P1} end={POS.P5} type="road" />
+             <ConnectionPath start={POS.P1} end={POS.P6} type="road" />
+             <ConnectionPath start={POS.P1} end={POS.P3B} type="road" />
+             
+             {/* Inter-nodal connections (Pipes) */}
+             <ConnectionPath start={POS.P2} end={POS.P4} type="pipe" /> {/* Milk to Cheese */}
+             <ConnectionPath start={POS.P6} end={POS.P5} type="pipe" /> {/* Power/Heat to Pharma */}
+
              {/* --- PLAN 1: THE HUB (Center) --- */}
-             <group position={P1_CENTER}>
-                <LabelCard position={[0, 12, 0]} text="Core Farm" subtext="Plan 1" color="emerald" />
-                <Building id="p1_packhouse" position={[0, 0, 0]} args={[15, 5, 20]} color="#f8fafc" onSelect={() => {}} isSelected={false} />
-                <Building id="p1_solar" position={[15, 0, 0]} args={[10, 0.5, 20]} color="#1e293b" onSelect={() => {}} isSelected={false} label="Solar Array" />
-                <Tank id="p1_water" position={[-12, 0, 0]} height={3} radius={3} color="#0ea5e9" onSelect={() => {}} isSelected={false} label="Water Hub" />
-                {/* Fields */}
-                <mesh rotation={[-Math.PI/2, 0, 0]} position={[0, 0.1, -15]}>
-                    <planeGeometry args={[30, 10]} />
-                    <meshStandardMaterial color="#16a34a" />
+             <group position={POS.P1}>
+                <HexBase position={[0,0,0]} color="#10b981" label="Plan 1: Hub" radius={26} />
+                <LabelCard position={[0, 14, 0]} text="Core Farm" subtext="Plan 1" color="emerald" />
+                
+                {/* Hub Building */}
+                <Building id="p1_packhouse" position={[0, 0, 0]} args={[16, 6, 20]} color="#f8fafc" onSelect={onSelect} isSelected={selectedId === 'p1_packhouse'} />
+                <mesh position={[0, 3.1, 0]}>
+                    <boxGeometry args={[14, 0.5, 18]} />
+                    <meshStandardMaterial color="#cbd5e1" />
                 </mesh>
-             </group>
 
-             {/* --- PLAN 6: ENERGY (South West) --- */}
-             <group position={P6_ENERGY}>
-                <LabelCard position={[0, 10, 0]} text="Bio-Energy" subtext="Plan 6" color="emerald" />
-                <Building id="p6_reactor" position={[0, 0, 0]} args={[10, 8, 10]} color="#334155" onSelect={() => {}} isSelected={false} />
-                <Tank id="p6_tank" position={[8, 0, 0]} height={6} radius={2.5} color="#e2e8f0" onSelect={() => {}} isSelected={false} />
-                <Pile id="p6_feedstock" position={[-8, 1, 0]} color="#d97706" onSelect={() => {}} isSelected={false} />
-             </group>
+                {/* Solar Array on Hub */}
+                <group position={[14, 0, 0]}>
+                    <Building id="p1_solar" position={[0, 0, 0]} args={[10, 0.5, 18]} color="#1e293b" onSelect={onSelect} isSelected={selectedId === 'p1_solar'} label="Solar" />
+                </group>
 
-             {/* --- PLAN 5: PHARMA (North West) --- */}
-             <group position={P5_PHARMA}>
-                 <LabelCard position={[0, 8, 0]} text="Pharma" subtext="Plan 5" color="cyan" />
-                 <Building id="p5_greenhouse" position={[0, 0, 0]} args={[20, 4, 15]} color="#a7f3d0" opacity={0.7} onSelect={() => {}} isSelected={false} />
-             </group>
-
-             {/* --- PLAN 3: MEAT FACTORY (East) --- */}
-             <group position={P3_MEAT}>
-                 <LabelCard position={[0, 10, 0]} text="Plant Meat" subtext="Plan 3" color="amber" />
-                 <Building id="p3_factory" position={[0, 0, 0]} args={[15, 6, 25]} color="#e2e8f0" onSelect={() => {}} isSelected={false} />
-                 <Tank id="p3_yeast" position={[-10, 0, 5]} height={7} radius={2} color="#fbbf24" onSelect={() => {}} isSelected={false} />
+                {/* Water Hub */}
+                <Tank id="p1_water" position={[-14, 0, 5]} height={4} radius={4} color="#0ea5e9" onSelect={onSelect} isSelected={selectedId === 'p1_water'} label="Water" />
+                <Tank id="p1_water" position={[-14, 0, -5]} height={4} radius={4} color="#0ea5e9" onSelect={onSelect} isSelected={selectedId === 'p1_water'} />
              </group>
 
              {/* --- PLAN 2: AGROFORESTRY (North) --- */}
-             <group position={P2_ORCHARD}>
-                 <LabelCard position={[0, 8, 0]} text="Agroforestry" subtext="Plan 2" color="green" />
-                 {/* Better Trees */}
-                 {Array.from({length: 5}).map((_, r) => 
-                    Array.from({length: 4}).map((_, c) => (
-                         <group key={`${r}-${c}`} position={[r*8 - 16, 0, c*8 - 12]}>
+             <group position={POS.P2}>
+                 <HexBase position={[0,0,0]} color="#16a34a" label="Plan 2: Orchard" />
+                 <LabelCard position={[0, 10, 0]} text="Agroforestry" subtext="Plan 2" color="green" />
+                 
+                 {/* INTERACTIVE ORCHARD ZONE (Invisible Hit Box) */}
+                 <Building 
+                    id="p2_orchard" 
+                    position={[0, 2, 0]} 
+                    args={[40, 4, 40]} 
+                    color="#16a34a" 
+                    opacity={0} 
+                    onSelect={onSelect} 
+                    isSelected={selectedId === 'p2_orchard'} 
+                 />
+
+                 {/* Hexagonal Orchard Layout (Visuals) */}
+                 {Array.from({length: 7}).map((_, i) => {
+                     const angle = (i / 6) * Math.PI * 2;
+                     const r = i === 0 ? 0 : 12;
+                     const x = Math.cos(angle) * r;
+                     const z = Math.sin(angle) * r;
+                     return (
+                         <group key={i} position={[x, 0, z]} className="pointer-events-none">
                             <mesh position={[0, 1, 0]}>
-                                <cylinderGeometry args={[0.2, 0.3, 2, 6]} />
+                                <cylinderGeometry args={[0.3, 0.4, 2, 6]} />
                                 <meshStandardMaterial color="#78350f" />
                             </mesh>
-                            <mesh position={[0, 2.5, 0]}>
-                                <dodecahedronGeometry args={[1.2, 0]} />
-                                <meshStandardMaterial color="#16a34a" />
+                            <mesh position={[0, 3, 0]}>
+                                <dodecahedronGeometry args={[2.5, 0]} />
+                                <meshStandardMaterial color={selectedId === 'p2_orchard' ? '#22c55e' : '#16a34a'} />
                             </mesh>
                          </group>
-                    ))
-                 )}
-                 <Building id="p2_dairy" position={[0, 0, 15]} args={[10, 4, 10]} color="#f1f5f9" onSelect={() => {}} isSelected={false} label="Dairy" />
+                     )
+                 })}
              </group>
 
              {/* --- PLAN 4: CHEESE (North East) --- */}
-             <group position={P4_CHEESE}>
-                <LabelCard position={[0, 8, 0]} text="Cheese" subtext="Plan 4" color="yellow" />
-                <Building id="p4_cave" position={[0, 0, 0]} args={[15, 3, 10]} color="#78716c" onSelect={() => {}} isSelected={false} />
-                <group position={[-15, 0, 0]}>
-                    <Building id="p4_bees" position={[0, 0, 0]} args={[5, 1, 10]} color="#d97706" onSelect={() => {}} isSelected={false} label="Hives" />
+             <group position={POS.P4}>
+                <HexBase position={[0,0,0]} color="#eab308" label="Plan 4: Cheese" />
+                <LabelCard position={[0, 10, 0]} text="Cheese" subtext="Plan 4" color="yellow" />
+                <Building id="p4_cave" position={[0, 0, -5]} args={[20, 4, 14]} color="#fcd34d" onSelect={onSelect} isSelected={selectedId === 'p4_cave'} />
+                {/* Apiary Boxes */}
+                <group position={[-5, 0, 10]}>
+                    {Array.from({length: 6}).map((_, i) => (
+                        <mesh key={i} position={[(i%3)*3 - 3, 0.5, Math.floor(i/3)*3]}>
+                            <boxGeometry args={[1.5, 1, 1.5]} />
+                            <meshStandardMaterial color="#d97706" />
+                        </mesh>
+                    ))}
                 </group>
              </group>
 
+             {/* --- PLAN 3: MEAT (South East) --- */}
+             <group position={POS.P3}>
+                 <HexBase position={[0,0,0]} color="#f59e0b" label="Plan 3: Meat" />
+                 <LabelCard position={[0, 12, 0]} text="Plant Meat" subtext="Plan 3" color="amber" />
+                 <Building id="p3_factory" position={[0, 0, 0]} args={[18, 7, 24]} color="#e2e8f0" onSelect={onSelect} isSelected={selectedId === 'p3_factory'} />
+                 <Tank id="p3_factory" position={[-12, 0, 5]} height={8} radius={2.5} color="#fbbf24" onSelect={onSelect} isSelected={selectedId === 'p3_factory'} />
+                 <Building id="p3_factory" position={[12, 0, -5]} args={[6, 8, 6]} color="#b45309" onSelect={onSelect} isSelected={selectedId === 'p3_factory'} />
+             </group>
+             
              {/* --- PLAN 3B: MUSHROOMS (South) --- */}
-             <group position={P3B_MUSHROOMS}>
-                 <LabelCard position={[0, 6, 0]} text="Mushrooms" subtext="Plan 3B" color="purple" />
-                 <Building id="p3b_containers" position={[0, 0, 0]} args={[12, 3, 8]} color="#d8b4fe" onSelect={() => {}} isSelected={false} />
+             <group position={POS.P3B}>
+                 <HexBase position={[0,0,0]} color="#a855f7" label="Plan 3B: Fungi" />
+                 <LabelCard position={[0, 8, 0]} text="Mushrooms" subtext="Plan 3B" color="purple" />
+                 {/* Container Stack */}
+                 <group position={[0, 0, 0]}>
+                     <Building id="p3b_cluster" position={[-6, 0, 0]} args={[4, 3, 12]} color="#d8b4fe" onSelect={onSelect} isSelected={selectedId === 'p3b_cluster'} />
+                     <Building id="p3b_cluster" position={[0, 0, 0]} args={[4, 3, 12]} color="#d8b4fe" onSelect={onSelect} isSelected={selectedId === 'p3b_cluster'} />
+                     <Building id="p3b_cluster" position={[6, 0, 0]} args={[4, 3, 12]} color="#d8b4fe" onSelect={onSelect} isSelected={selectedId === 'p3b_cluster'} />
+                     <Building id="p3b_cluster" position={[-3, 3, 0]} args={[4, 3, 12]} color="#c084fc" onSelect={onSelect} isSelected={selectedId === 'p3b_cluster'} />
+                     <Building id="p3b_cluster" position={[3, 3, 0]} args={[4, 3, 12]} color="#c084fc" onSelect={onSelect} isSelected={selectedId === 'p3b_cluster'} />
+                 </group>
+             </group>
+
+             {/* --- PLAN 6: ENERGY (South West) --- */}
+             <group position={POS.P6}>
+                <HexBase position={[0,0,0]} color="#10b981" label="Plan 6: Energy" />
+                <LabelCard position={[0, 14, 0]} text="Bio-Energy" subtext="Plan 6" color="emerald" />
+                <Building id="p6_reactor" position={[0, 0, -6]} args={[12, 10, 12]} color="#334155" onSelect={onSelect} isSelected={selectedId === 'p6_reactor'} />
+                <group position={[8, 0, 6]}>
+                    <Tank id="p6_reactor" position={[-3, 0, 0]} height={6} radius={2.5} color="#cbd5e1" onSelect={onSelect} isSelected={selectedId === 'p6_reactor'} />
+                    <Tank id="p6_reactor" position={[3, 0, 0]} height={6} radius={2.5} color="#cbd5e1" onSelect={onSelect} isSelected={selectedId === 'p6_reactor'} />
+                </group>
+                <Pile id="p6_reactor" position={[-10, 1, 5]} color="#d97706" onSelect={onSelect} isSelected={selectedId === 'p6_reactor'} />
+             </group>
+
+             {/* --- PLAN 5: PHARMA (North West) --- */}
+             <group position={POS.P5}>
+                 <HexBase position={[0,0,0]} color="#06b6d4" label="Plan 5: Pharma" />
+                 <LabelCard position={[0, 10, 0]} text="Pharma" subtext="Plan 5" color="cyan" />
+                 {/* Greenhouse structure */}
+                 <Building id="p5_greenhouse" position={[0, 0, 0]} args={[24, 5, 18]} color="#a7f3d0" opacity={0.7} onSelect={onSelect} isSelected={selectedId === 'p5_greenhouse'} />
+                 {/* Internal frame hint */}
+                 <mesh position={[0, 2.5, 0]}>
+                     <boxGeometry args={[23, 4.8, 17]} />
+                     <meshBasicMaterial color="#ecfdf5" wireframe />
+                 </mesh>
              </group>
 
 
-             {/* --- SYSTEMIC FLOW LINES --- */}
+             {/* --- SYSTEMIC FLOW LINES (Curved Data Flows) --- */}
              
              {/* 1. SOY FLOW: Farm (P1) -> Meat (P3) */}
              <FlowLine 
-                start={[0, 2, 0]} 
-                end={[30, 2, 10]} 
+                start={[POS.P1[0], 6, POS.P1[2]]} 
+                end={[POS.P3[0], 8, POS.P3[2]]} 
                 color="#16a34a" 
                 label="Soy Feedstock" 
                 details={{ volume: "150 T/Year", value: "R 1.5M Saved", icon: Sprout }} 
-                arcHeight={12}
+                arcHeight={25}
              />
 
              {/* 2. WASTE FLOW: Orchard (P2) -> Energy (P6) */}
              <FlowLine 
-                start={[0, 2, -40]} 
-                end={[-30, 2, 30]} 
+                start={[POS.P2[0], 6, POS.P2[2]]} 
+                end={[POS.P6[0], 12, POS.P6[2]]} 
                 color="#854d0e" 
-                label="Biomass (Shells)" 
+                label="Biomass" 
                 details={{ volume: "145 T/Year", value: "Zero Cost", icon: Recycle }} 
-                arcHeight={25}
+                arcHeight={40}
              />
 
              {/* 3. WASTE FLOW: Orchard (P2) -> Mushrooms (P3B) */}
              <FlowLine 
-                start={[0, 2, -40]} 
-                end={[-10, 2, 30]} 
+                start={[POS.P2[0], 6, POS.P2[2]]} 
+                end={[POS.P3B[0], 6, POS.P3B[2]]} 
                 color="#a16207" 
-                label="Wood Prunings" 
+                label="Prunings" 
                 details={{ volume: "250 T/Year", value: "Substrate", icon: Recycle }} 
-                arcHeight={20}
+                arcHeight={35}
              />
 
              {/* 4. ENERGY FLOW: Energy (P6) -> Pharma (P5) */}
              <FlowLine 
-                start={[-30, 8, 30]} 
-                end={[-35, 4, -20]} 
+                start={[POS.P6[0], 12, POS.P6[2]]} 
+                end={[POS.P5[0], 6, POS.P5[2]]} 
                 color="#fbbf24" 
                 label="Backup Power" 
                 details={{ volume: "100% Off-Grid", value: "Crit. Uptime", icon: Zap }} 
-                arcHeight={18}
+                arcHeight={25}
              />
 
              {/* 5. INPUT FLOW: Orchard (P2) -> Cheese (P4) */}
              <FlowLine 
-                start={[0, 4, -40]} 
-                end={[35, 3, -25]} 
+                start={[POS.P2[0], 6, POS.P2[2]]} 
+                end={[POS.P4[0], 6, POS.P4[2]]} 
                 color="#22c55e" 
                 label="Macadamias" 
                 details={{ volume: "145 T/Year", value: "@ R3/kg Cost", icon: Truck }} 
-                arcHeight={10}
+                arcHeight={20}
              />
 
              {/* 6. ECO SERVICE: Bees (P4) -> Orchard (P2) */}
              <FlowLine 
-                start={[20, 2, -25]} 
-                end={[5, 2, -40]} 
+                start={[POS.P4[0], 4, POS.P4[2]]} 
+                end={[POS.P2[0], 4, POS.P2[2]]} 
                 color="#f472b6" 
                 label="Pollination" 
                 details={{ volume: "+40% Yield", value: "R 14.0M Val", icon: Wind }} 
-                arcHeight={8}
+                arcHeight={15}
              />
 
              {/* 7. REGENERATION: Energy (P6) -> Farm (P1) */}
              <FlowLine 
-                start={[-30, 2, 30]} 
-                end={[0, 2, 0]} 
+                start={[POS.P6[0], 6, POS.P6[2]]} 
+                end={[POS.P1[0], 6, POS.P1[2]]} 
                 color="#334155" 
                 label="Biochar" 
                 details={{ volume: "3,000 T/Year", value: "Soil Health", icon: Sprout }} 
-                arcHeight={15}
+                arcHeight={20}
              />
 
              {/* 8. WATER: Hub (P1) -> Orchard (P2) */}
              <FlowLine 
-                start={[-12, 2, 0]} 
-                end={[0, 2, -40]} 
+                start={[POS.P1[0], 4, POS.P1[2]]} 
+                end={[POS.P2[0], 4, POS.P2[2]]} 
                 color="#0ea5e9" 
                 label="Water" 
                 details={{ volume: "Irrigation", value: "Shared Res", icon: Droplets }} 
-                arcHeight={8}
+                arcHeight={15}
              />
 
         </group>
@@ -850,7 +1108,7 @@ const Scene = ({ selectedId, onSelect, projectId, viewMode, timelineYear }: { se
     
     // --- MASTER SCENE ---
     if (projectId === 'master') {
-        return <MasterScene onSelect={onSelect} />;
+        return <MasterScene onSelect={onSelect} selectedId={selectedId} />;
     }
 
     // --- PLAN 5 SCENE (Greenhouse) ---
@@ -1448,8 +1706,7 @@ const Facility3D: React.FC<Facility3DProps> = ({ projectId }) => {
     if (projectId === 'plan2') data = facilityDataPlan2;
     if (projectId === 'plan3') data = facilityDataPlan3;
     if (projectId === 'plan1') data = facilityDataPlan1;
-    // For master, we don't show the detail panel, just the overall view
-    if (projectId === 'master') data = {};
+    if (projectId === 'master') data = facilityDataMaster; // Use new Master Data
 
     const activeItem = selectedId ? data[selectedId] : null;
 
@@ -1487,7 +1744,7 @@ const Facility3D: React.FC<Facility3DProps> = ({ projectId }) => {
                 </h3>
                 <p className="text-slate-300 text-[10px] md:text-xs mt-1 hidden md:block">
                     {projectId === 'master'
-                        ? 'A realtime digital twin of the entire Ubuntu Restoration Farms ecosystem.'
+                        ? 'A realtime digital twin of the entire Ubuntu Restoration Farms ecosystem. Click nodes for details.'
                         : (projectId === 'plan2' && viewMode === 'evolution' 
                         ? 'Visualize the 7-year timeline.'
                         : 'Click on highlighted components to view specs.')
@@ -1533,30 +1790,51 @@ const Facility3D: React.FC<Facility3DProps> = ({ projectId }) => {
                 )}
             </div>
 
-            {/* Selected Item Detail Panel (Only in Layout Mode and NOT Master) */}
-            {activeItem && viewMode === 'layout' && projectId !== 'master' && (
-                <div className="absolute bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-80 z-10 bg-white/95 backdrop-blur shadow-xl rounded-lg p-4 border border-slate-200 animate-slide-up">
-                    <div className="flex justify-between items-start mb-2">
+            {/* Selected Item Detail Panel */}
+            {activeItem && viewMode === 'layout' && (
+                <div className={`absolute bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-80 z-10 backdrop-blur-xl shadow-2xl rounded-lg p-0 border animate-slide-up overflow-hidden ${projectId === 'master' ? 'bg-slate-900/90 border-emerald-500/30' : 'bg-white/95 border-slate-200'}`}>
+                    
+                    {/* Header Bar */}
+                    <div className={`px-4 py-3 flex justify-between items-start border-b ${projectId === 'master' ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100'}`}>
                         <div>
-                             <span className="text-xs font-bold uppercase text-emerald-600">{activeItem.type}</span>
-                             <h4 className="text-lg font-bold text-slate-900">{activeItem.name}</h4>
+                             <span className={`text-[10px] font-bold uppercase tracking-wider ${projectId === 'master' ? 'text-emerald-400' : 'text-emerald-600'}`}>{activeItem.type}</span>
+                             <h4 className={`text-lg font-bold ${projectId === 'master' ? 'text-white' : 'text-slate-900'}`}>{activeItem.name}</h4>
                         </div>
-                        <button onClick={(e) => { e.stopPropagation(); setSelectedId(null); }} className="text-slate-400 hover:text-slate-600">
+                        <button onClick={(e) => { e.stopPropagation(); setSelectedId(null); }} className={`${projectId === 'master' ? 'text-slate-400 hover:text-white' : 'text-slate-400 hover:text-slate-600'}`}>
                             <X className="h-5 w-5" />
                         </button>
                     </div>
-                    <p className="text-sm text-slate-600 mb-3 line-clamp-3 md:line-clamp-none">{activeItem.description}</p>
-                    
-                    <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100">
-                        <div>
-                            <span className="text-xs text-slate-400 block">Capacity/Spec</span>
-                            <span className="text-sm font-bold text-slate-800">{activeItem.capacity}</span>
-                        </div>
-                        <div className="flex items-end">
-                            <div className="text-xs bg-emerald-100 text-emerald-800 px-2 py-1 rounded font-medium flex items-center gap-1">
-                                <Activity className="w-3 h-3" /> Live
+
+                    {/* Body */}
+                    <div className="p-4">
+                        <p className={`text-sm mb-4 leading-relaxed ${projectId === 'master' ? 'text-slate-300' : 'text-slate-600'}`}>{activeItem.description}</p>
+                        
+                        {/* Extended Stats for Master View */}
+                        {projectId === 'master' && activeItem.stats ? (
+                            <div className="grid grid-cols-2 gap-2">
+                                {activeItem.stats.map((stat, i) => (
+                                    <div key={i} className="bg-slate-800 p-2 rounded border border-slate-700 flex flex-col">
+                                        <div className="flex items-center gap-1.5 mb-1">
+                                            <stat.icon className={`w-3 h-3 ${stat.color}`} />
+                                            <span className="text-[10px] text-slate-400 uppercase font-bold">{stat.label}</span>
+                                        </div>
+                                        <span className="text-sm font-bold text-white">{stat.value}</span>
+                                    </div>
+                                ))}
                             </div>
-                        </div>
+                        ) : (
+                            <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100">
+                                <div>
+                                    <span className="text-xs text-slate-400 block">Capacity/Spec</span>
+                                    <span className="text-sm font-bold text-slate-800">{activeItem.capacity}</span>
+                                </div>
+                                <div className="flex items-end justify-end">
+                                    <div className="text-xs bg-emerald-100 text-emerald-800 px-2 py-1 rounded font-medium flex items-center gap-1">
+                                        <Activity className="w-3 h-3" /> Live
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -1566,19 +1844,19 @@ const Facility3D: React.FC<Facility3DProps> = ({ projectId }) => {
                 camera={{ position: projectId === 'master' ? [40, 25, 40] : [40, 40, 40], fov: 45 }}
                 className={`${isInteracting ? 'cursor-move' : 'pointer-events-none'}`}
             >
-                <color attach="background" args={['#f0f9ff']} />
-                <fog attach="fog" args={['#f0f9ff', 60, 150]} />
+                <color attach="background" args={[projectId === 'master' ? '#0f172a' : '#f0f9ff']} />
+                <fog attach="fog" args={[projectId === 'master' ? '#0f172a' : '#f0f9ff', 60, 150]} />
                 
                 {/* Controls */}
                 <OrbitControls 
                     makeDefault 
-                    autoRotate={projectId === 'master' && !isInteracting} // Auto rotate master view if idle
+                    autoRotate={projectId === 'master' && !isInteracting && !selectedId} 
                     autoRotateSpeed={0.5}
                     minPolarAngle={0} 
                     maxPolarAngle={Math.PI / 2.2}
                     maxDistance={projectId === 'master' ? 180 : 100}
                     minDistance={20}
-                    enabled={isInteracting} // Disable orbit when not interacting to allow scroll
+                    enabled={isInteracting} 
                 />
 
                 {/* Soft Shadows */}
@@ -1594,7 +1872,10 @@ const Facility3D: React.FC<Facility3DProps> = ({ projectId }) => {
                 />
                 
                 {/* Grid Helper */}
-                <gridHelper args={[200, 40, '#cbd5e1', '#e2e8f0']} position={[0, 0, 0]} />
+                <gridHelper 
+                    args={[200, 40, projectId === 'master' ? '#334155' : '#cbd5e1', projectId === 'master' ? '#1e293b' : '#e2e8f0']} 
+                    position={[0, 0, 0]} 
+                />
             </Canvas>
         </div>
     );
