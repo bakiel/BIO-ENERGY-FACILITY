@@ -1,16 +1,222 @@
 
-import React from 'react';
-import { Factory, Truck, Sprout, Recycle, Zap, TrendingUp, Sprout as SproutIcon, ShieldCheck, Pill, Beaker, Box, ChefHat, Flame, Package, Layers, Scale, Trees } from 'lucide-react';
-import SystemBlueprint from './SystemBlueprint';
+import React, { useState, useMemo } from 'react';
+import { Factory, Activity, ArrowRight, Gauge, Thermometer, Scale, Zap, Clock, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
+import SystemBlueprint, { nodeConfig } from './SystemBlueprint';
 
 interface SystemLogicProps {
     projectId: string;
 }
 
+// --- MOCK DATA FOR NODE INSPECTOR ---
+const nodeDetails: Record<string, any> = {
+    solar: {
+        inputs: [{ label: "Solar Irradiance", val: "1000 W/m²" }, { label: "Panel Area", val: "2.5 Ha" }],
+        process: { desc: "Photovoltaic Conversion", eff: "22%" },
+        outputs: [{ label: "DC Power", val: "4.9 MWp" }, { label: "AC Grid Feed", val: "4.5 MW" }],
+        kpi: { temp: "45°C", load: "85%", status: "Optimal" }
+    },
+    water: {
+        inputs: [{ label: "Rainfall", val: "650mm/yr" }, { label: "Boreholes", val: "9 Units" }],
+        process: { desc: "Magnetic Filtration", eff: "99.9%" },
+        outputs: [{ label: "Irrigation", val: "19ML Dam" }, { label: "Potable", val: "20k L/day" }],
+        kpi: { temp: "18°C", load: "45%", status: "Filling" }
+    },
+    wildlife: {
+        inputs: [{ label: "Biomass", val: "Native Grass" }],
+        process: { desc: "Natural Grazing", eff: "100%" },
+        outputs: [{ label: "Manure", val: "3000 T/yr" }, { label: "Tourism", val: "R2.5M/yr" }],
+        kpi: { temp: "Ambient", load: "N/A", status: "Active" }
+    },
+    farm_veg: {
+        inputs: [{ label: "Water", val: "319 KL" }, { label: "Compost", val: "2300 T" }],
+        process: { desc: "Intensive Horticulture", eff: "R20.5M Rev" },
+        outputs: [{ label: "Vegetables", val: "1149 T" }, { label: "Residue", val: "150 T" }],
+        kpi: { temp: "24°C", load: "92%", status: "Harvest" }
+    },
+    compost: {
+        inputs: [{ label: "Manure", val: "3000 T" }, { label: "Chips", val: "250 T" }],
+        process: { desc: "Aerobic Fermentation", eff: "6 Weeks" },
+        outputs: [{ label: "Humus", val: "2300 T" }, { label: "CO2 Seq", val: "Permanent" }],
+        kpi: { temp: "65°C", load: "100%", status: "Cooking" }
+    },
+    farm_tree: {
+        inputs: [{ label: "Trees", val: "36,000" }, { label: "Land", val: "180 Ha" }],
+        process: { desc: "Photosynthesis", eff: "High" },
+        outputs: [{ label: "Macadamias", val: "288 T" }, { label: "Prunings", val: "250 T" }],
+        kpi: { temp: "Ambient", load: "Year 4", status: "Growing" }
+    },
+    farm_soy: {
+        inputs: [{ label: "Seed", val: "Non-GMO" }, { label: "Inoculant", val: "Rhizobium" }],
+        process: { desc: "Nitrogen Fixation", eff: "+N Soil" },
+        outputs: [{ label: "Soybeans", val: "270 T" }, { label: "Stover", val: "Biomass" }],
+        kpi: { temp: "Ambient", load: "Summer", status: "Mature" }
+    },
+    p5_solar: {
+        inputs: [{ label: "Sunlight", val: "Peak" }, { label: "Grid", val: "Disconnected" }],
+        process: { desc: "Energy Distribution", eff: "99.9% Uptime" },
+        outputs: [{ label: "Electricity", val: "9.05M kWh" }, { label: "Savings", val: "R60M/yr" }],
+        kpi: { temp: "35°C", load: "100%", status: "Powering" }
+    },
+    p3b_mush: {
+        inputs: [{ label: "Substrate", val: "Wood Chips" }, { label: "Spores", val: "Lion's Mane" }],
+        process: { desc: "Controlled Fruiting", eff: "14 Days" },
+        outputs: [{ label: "Mushrooms", val: "100 T" }, { label: "Spent Substrate", val: "Compost" }],
+        kpi: { temp: "18°C", load: "95%", status: "Fruiting" }
+    },
+    p2_dairy: {
+        inputs: [{ label: "Raw Nuts/Soy", val: "Estate" }, { label: "Water", val: "Filtered" }],
+        process: { desc: "Colloid Milling", eff: "2000 L/hr" },
+        outputs: [{ label: "Plant Milk", val: "2M Liters" }, { label: "Okara", val: "Feed" }],
+        kpi: { temp: "4°C", load: "80%", status: "Processing" }
+    },
+    p4_cheese: {
+        inputs: [{ label: "Nut Milk", val: "Fermented" }, { label: "Cultures", val: "Vegan" }],
+        process: { desc: "Cave Ageing", eff: "6 Months" },
+        outputs: [{ label: "Aged Cheese", val: "20k Wheels" }, { label: "Wax", val: "Sealed" }],
+        kpi: { temp: "12°C", load: "Full", status: "Ageing" }
+    },
+    p3_meat: {
+        inputs: [{ label: "Protein", val: "Gluten/Soy" }, { label: "Flavor", val: "Smoke" }],
+        process: { desc: "HMMA Extrusion", eff: "1 T/day" },
+        outputs: [{ label: "Plant Meat", val: "858 T" }, { label: "Retort", val: "Shelf Stable" }],
+        kpi: { temp: "140°C", load: "85%", status: "Running" }
+    },
+    p6_energy: {
+        inputs: [{ label: "Biomass", val: "Diverse" }, { label: "Heat", val: "Recycled" }],
+        process: { desc: "Fast Pyrolysis", eff: "80% Yield" },
+        outputs: [{ label: "Bio-Diesel", val: "3.45M L" }, { label: "Biochar", val: "3000 T" }],
+        kpi: { temp: "500°C", load: "98%", status: "Nominal" }
+    },
+    out_food: {
+        inputs: [{ label: "Production", val: "All Units" }],
+        process: { desc: "Distribution", eff: "National" },
+        outputs: [{ label: "Meals", val: "3.43 Million" }, { label: "Nutrition", val: "High" }],
+        kpi: { temp: "N/A", load: "High", status: "Secure" }
+    },
+    out_econ: {
+        inputs: [{ label: "Sales", val: "Global" }],
+        process: { desc: "Wealth Creation", eff: "65% Margin" },
+        outputs: [{ label: "Revenue", val: "R1.2 Billion" }, { label: "Jobs", val: "1,205" }],
+        kpi: { temp: "Hot", load: "Growing", status: "Positive" }
+    },
+    out_climate: {
+        inputs: [{ label: "Emissions", val: "Avoided" }],
+        process: { desc: "Sequestration", eff: "Net Neg" },
+        outputs: [{ label: "Carbon", val: "-19,085 T" }, { label: "Soil", val: "Restored" }],
+        kpi: { temp: "Cool", load: "Max", status: "Green" }
+    }
+};
+
+const NodeDetailPanel = ({ nodeId }: { nodeId: string | null }) => {
+    if (!nodeId) {
+        return (
+            <div className="h-64 flex flex-col items-center justify-center text-slate-500 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
+                <Activity className="w-12 h-12 mb-4 opacity-20" />
+                <p className="text-sm font-bold uppercase tracking-widest">Select a System Node to Inspect</p>
+            </div>
+        );
+    }
+
+    const config = nodeConfig[nodeId as keyof typeof nodeConfig];
+    const details = nodeDetails[nodeId] || { inputs: [], outputs: [], process: { desc: "Processing", eff: "Normal" }, kpi: { temp: "-", load: "-", status: "-" } };
+
+    return (
+        <div className="bg-slate-900 text-white rounded-xl overflow-hidden shadow-xl border border-slate-700 animate-fade-in-up">
+            {/* Header */}
+            <div className={`bg-gradient-to-r from-${config.color}-900 to-slate-900 p-4 border-b border-slate-700 flex justify-between items-center`}>
+                <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg bg-${config.color}-500/20 border border-${config.color}-500/50 text-${config.color}-400`}>
+                        {React.createElement(config.icon, { size: 24 })}
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-bold leading-none">{config.label}</h3>
+                        <p className={`text-xs font-bold uppercase tracking-wider text-${config.color}-400 mt-1`}>{config.type} Node // {config.sub}</p>
+                    </div>
+                </div>
+                <div className="hidden sm:flex items-center gap-4">
+                    <div className="text-right">
+                        <div className="text-[10px] uppercase text-slate-400 font-bold">System Status</div>
+                        <div className="text-emerald-400 font-bold flex items-center justify-end gap-1">
+                            <CheckCircle2 size={14} /> ONLINE
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Dashboard Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-slate-700">
+                
+                {/* Column 1: Input Stream */}
+                <div className="p-6 space-y-4">
+                    <h4 className="text-xs font-bold uppercase text-slate-500 flex items-center gap-2">
+                        <ArrowRight className="w-3 h-3" /> Input Stream
+                    </h4>
+                    <div className="space-y-3">
+                        {details.inputs.map((input: any, i: number) => (
+                            <div key={i} className="flex justify-between items-center bg-slate-800/50 p-3 rounded-lg border border-slate-700">
+                                <span className="text-sm text-slate-300">{input.label}</span>
+                                <span className="font-mono text-sm font-bold text-white">{input.val}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Column 2: Transformation Logic */}
+                <div className="p-6 space-y-6 relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-emerald-500/50 shadow-[0_0_15px_#10b981]"></div>
+                    
+                    <div className="text-center space-y-2">
+                        <div className="inline-block p-3 rounded-full bg-slate-800 border border-slate-600 mb-2">
+                            <Zap className="w-6 h-6 text-yellow-400 animate-pulse" />
+                        </div>
+                        <h4 className="text-lg font-bold">{details.process.desc}</h4>
+                        <p className="text-slate-400 text-sm">Active Transformation</p>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="bg-slate-800 p-2 rounded border border-slate-700">
+                            <div className="text-[10px] uppercase text-slate-500 font-bold mb-1">Temp</div>
+                            <div className="font-mono font-bold text-emerald-400">{details.kpi.temp}</div>
+                        </div>
+                        <div className="bg-slate-800 p-2 rounded border border-slate-700">
+                            <div className="text-[10px] uppercase text-slate-500 font-bold mb-1">Load</div>
+                            <div className="font-mono font-bold text-blue-400">{details.kpi.load}</div>
+                        </div>
+                        <div className="bg-slate-800 p-2 rounded border border-slate-700">
+                            <div className="text-[10px] uppercase text-slate-500 font-bold mb-1">Eff</div>
+                            <div className="font-mono font-bold text-amber-400">{details.process.eff}</div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Column 3: Output Value */}
+                <div className="p-6 space-y-4">
+                    <h4 className="text-xs font-bold uppercase text-slate-500 flex items-center gap-2 justify-end">
+                        Output Value <Scale className="w-3 h-3" />
+                    </h4>
+                    <div className="space-y-3">
+                        {details.outputs.map((output: any, i: number) => (
+                            <div key={i} className="text-right">
+                                <div className="text-2xl font-bold text-white">{output.val}</div>
+                                <div className="text-xs uppercase font-bold text-emerald-500">{output.label}</div>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-slate-700 flex justify-end items-center gap-2 text-xs text-slate-400">
+                        <Clock className="w-3 h-3" /> Real-time telemetry
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    );
+};
+
 const SystemLogic: React.FC<SystemLogicProps> = ({ projectId }) => {
-  
+  const [selectedNode, setSelectedNode] = useState<string | null>(null);
+
   const getPlanTitle = () => {
-      if (projectId === 'plan5') return 'Plan 5: High-Tech Pharma';
+      if (projectId === 'plan5') return 'Plan 5: Estate Solar';
       if (projectId === 'plan4') return 'Plan 4: Artisan Cheese & Bees';
       if (projectId === 'plan3') return 'Plan 3: Plant Meat Factory';
       if (projectId === 'plan3b') return 'Plan 3B: Medicinal Mushrooms';
@@ -21,7 +227,7 @@ const SystemLogic: React.FC<SystemLogicProps> = ({ projectId }) => {
   };
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-8 animate-fade-in pb-12">
       {/* Header */}
       <div className="flex items-center gap-3 mb-2">
             <div className={`p-2 ${projectId === 'plan5' ? 'bg-cyan-100' : (projectId === 'plan3b' ? 'bg-purple-100' : (projectId === 'plan4' ? 'bg-yellow-100' : (projectId === 'plan3' ? 'bg-amber-100' : (projectId === 'plan2' ? 'bg-green-100' : (projectId === 'plan1' ? 'bg-emerald-100' : 'bg-emerald-100')))))} rounded-lg`}>
@@ -29,500 +235,23 @@ const SystemLogic: React.FC<SystemLogicProps> = ({ projectId }) => {
             </div>
             <div>
                 <h2 className="text-2xl font-bold text-slate-900">{getPlanTitle()}</h2>
-                <p className="text-slate-500">Core Business Logic & System Design</p>
+                <p className="text-slate-500">Interactive System Architecture</p>
             </div>
       </div>
 
       {/* PART 1: VISUAL BLUEPRINT */}
-      <div className="w-full shadow-lg rounded-xl overflow-hidden border border-slate-200">
-         <SystemBlueprint projectId={projectId} />
+      <div className="w-full shadow-2xl rounded-xl overflow-hidden border border-slate-200 bg-slate-950">
+         <SystemBlueprint 
+            projectId={projectId} 
+            onNodeSelect={setSelectedNode}
+            selectedNodeId={selectedNode}
+         />
       </div>
 
-      {/* PART 2: DETAILED SPECS */}
-      {projectId !== 'master' && (
-        <div className="space-y-6">
-          {/* Input Flow */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-              <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
-                  <Truck className="h-4 w-4 text-slate-500" />
-                  Input Flow Analysis
-              </h3>
-              
-              {projectId === 'plan5' ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                       <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                          <div className="text-xs font-bold text-amber-600 uppercase mb-1">Energy (Solar)</div>
-                          <div className="font-bold text-slate-900">100% Indep.</div>
-                          <div className="text-xs text-slate-500 mt-2">4,561 kWp PV + Battery. Zero Eskom cost.</div>
-                      </div>
-                      <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                          <div className="text-xs font-bold text-blue-600 uppercase mb-1">Water</div>
-                          <div className="font-bold text-slate-900">200k L/Mo</div>
-                          <div className="text-xs text-slate-500 mt-2">Shared boreholes from Plan 1.</div>
-                      </div>
-                      <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                          <div className="text-xs font-bold text-emerald-600 uppercase mb-1">Seeds (Import)</div>
-                          <div className="font-bold text-slate-900">R1.2M / Yr</div>
-                          <div className="text-xs text-slate-500 mt-2">High-glucoraphanin hybrid variants.</div>
-                      </div>
-                      <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                          <div className="text-xs font-bold text-purple-600 uppercase mb-1">Substrate</div>
-                          <div className="font-bold text-slate-900">Plan 3 Recyc.</div>
-                          <div className="text-xs text-slate-500 mt-2">Compost from other farm units.</div>
-                      </div>
-                  </div>
-              ) : projectId === 'plan3b' ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                       <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                          <div className="text-xs font-bold text-green-600 uppercase mb-1">Wood Chips</div>
-                          <div className="font-bold text-slate-900">250T/Yr</div>
-                          <div className="text-xs text-slate-500 mt-2">From Plan 1 prunings. Zero cost.</div>
-                      </div>
-                      <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                          <div className="text-xs font-bold text-amber-600 uppercase mb-1">Energy</div>
-                          <div className="font-bold text-slate-900">50kW Solar</div>
-                          <div className="text-xs text-slate-500 mt-2">Allocated from central array.</div>
-                      </div>
-                      <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                          <div className="text-xs font-bold text-blue-600 uppercase mb-1">Spawn</div>
-                          <div className="font-bold text-slate-900">In-House</div>
-                          <div className="text-xs text-slate-500 mt-2">Lab propagation from mother cultures.</div>
-                      </div>
-                      <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                          <div className="text-xs font-bold text-purple-600 uppercase mb-1">Capsules</div>
-                          <div className="font-bold text-slate-900">Vegan HPMC</div>
-                          <div className="text-xs text-slate-500 mt-2">Imported bulk for encapsulation.</div>
-                      </div>
-                  </div>
-              ) : projectId === 'plan4' ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                       <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                          <div className="text-xs font-bold text-green-600 uppercase mb-1">Estate Macadamias</div>
-                          <div className="font-bold text-slate-900">145T @ R3/kg</div>
-                          <div className="text-xs text-slate-500 mt-2">From Plan 2. R25.7M savings vs market.</div>
-                      </div>
-                      <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                          <div className="text-xs font-bold text-yellow-600 uppercase mb-1">Cultures</div>
-                          <div className="font-bold text-slate-900">Vegan Lactic</div>
-                          <div className="text-xs text-slate-500 mt-2">Specific strains for cave ageing.</div>
-                      </div>
-                      <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                          <div className="text-xs font-bold text-orange-600 uppercase mb-1">Wax</div>
-                          <div className="font-bold text-slate-900">Carnauba/Bees</div>
-                          <div className="text-xs text-slate-500 mt-2">33% own beeswax (internal cycle).</div>
-                      </div>
-                      <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                          <div className="text-xs font-bold text-blue-600 uppercase mb-1">Energy</div>
-                          <div className="font-bold text-slate-900">300kW Solar</div>
-                          <div className="text-xs text-slate-500 mt-2">400kWh battery for cave climate control.</div>
-                      </div>
-                  </div>
-              ) : projectId === 'plan3' ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                       <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                          <div className="text-xs font-bold text-amber-600 uppercase mb-1">Soybeans</div>
-                          <div className="font-bold text-slate-900">150 T/Year</div>
-                          <div className="text-xs text-slate-500 mt-2">From Plan 1 (Internal supply).</div>
-                      </div>
-                      <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                          <div className="text-xs font-bold text-blue-600 uppercase mb-1">Wheat Gluten</div>
-                          <div className="font-bold text-slate-900">Seitan Base</div>
-                          <div className="text-xs text-slate-500 mt-2">For premium deli cuts.</div>
-                      </div>
-                      <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                          <div className="text-xs font-bold text-emerald-600 uppercase mb-1">Wood Chips</div>
-                          <div className="font-bold text-slate-900">Oak/Apple</div>
-                          <div className="text-xs text-slate-500 mt-2">For real smoke curing.</div>
-                      </div>
-                      <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                          <div className="text-xs font-bold text-purple-600 uppercase mb-1">Packaging</div>
-                          <div className="font-bold text-slate-900">Retort Pouch</div>
-                          <div className="text-xs text-slate-500 mt-2">3-layer laminate (18mo shelf life).</div>
-                      </div>
-                  </div>
-              ) : projectId === 'plan2' ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                       <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                          <div className="text-xs font-bold text-green-600 uppercase mb-1">Trees</div>
-                          <div className="font-bold text-slate-900">36,000 Units</div>
-                          <div className="text-xs text-slate-500 mt-2">Macadamias (Beaumont/A4).</div>
-                      </div>
-                      <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                          <div className="text-xs font-bold text-amber-600 uppercase mb-1">Soybeans</div>
-                          <div className="font-bold text-slate-900">180 Hectares</div>
-                          <div className="text-xs text-slate-500 mt-2">Intercropped. Fixes N for trees.</div>
-                      </div>
-                      <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                          <div className="text-xs font-bold text-blue-600 uppercase mb-1">Water</div>
-                          <div className="font-bold text-slate-900">-20% Usage</div>
-                          <div className="text-xs text-slate-500 mt-2">Canopy reduces evapotranspiration.</div>
-                      </div>
-                      <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                          <div className="text-xs font-bold text-purple-600 uppercase mb-1">Pollination</div>
-                          <div className="font-bold text-slate-900">200 Hives</div>
-                          <div className="text-xs text-slate-500 mt-2">Bee service adds R20M value.</div>
-                      </div>
-                  </div>
-              ) : projectId === 'plan1' ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                       <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                          <div className="text-xs font-bold text-green-600 uppercase mb-1">Land</div>
-                          <div className="font-bold text-slate-900">445 Hectares</div>
-                          <div className="text-xs text-slate-500 mt-2">220ha Cultivation / 220ha Wildlife.</div>
-                      </div>
-                      <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                          <div className="text-xs font-bold text-amber-600 uppercase mb-1">Water</div>
-                          <div className="font-bold text-slate-900">9 Boreholes</div>
-                          <div className="text-xs text-slate-500 mt-2">19,000 m³ Dam + Rain Harvesting.</div>
-                      </div>
-                      <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                          <div className="text-xs font-bold text-blue-600 uppercase mb-1">Nutrients</div>
-                          <div className="font-bold text-slate-900">Manure/Rock</div>
-                          <div className="text-xs text-slate-500 mt-2">3,000T Manure + 600T Rock Dust.</div>
-                      </div>
-                      <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                          <div className="text-xs font-bold text-purple-600 uppercase mb-1">Energy</div>
-                          <div className="font-bold text-slate-900">500kVA Solar</div>
-                          <div className="text-xs text-slate-500 mt-2">Off-grid power for irrigation.</div>
-                      </div>
-                  </div>
-              ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                          <div className="text-xs font-bold text-emerald-600 uppercase mb-1">Municipal</div>
-                          <div className="font-bold text-slate-900">9,729 TPA</div>
-                          <div className="text-xs text-slate-500 mt-2">We earn R250/T tipping fee.</div>
-                      </div>
-                      <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                          <div className="text-xs font-bold text-amber-600 uppercase mb-1">Agricultural</div>
-                          <div className="font-bold text-slate-900">16,590 TPA</div>
-                          <div className="text-xs text-slate-500 mt-2">We pay R200/T (residues).</div>
-                      </div>
-                      <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                          <div className="text-xs font-bold text-blue-600 uppercase mb-1">Industrial</div>
-                          <div className="font-bold text-slate-900">2,145 TPA</div>
-                          <div className="text-xs text-slate-500 mt-2">We pay R150/T (chips).</div>
-                      </div>
-                      <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                          <div className="text-xs font-bold text-purple-600 uppercase mb-1">Internal</div>
-                          <div className="font-bold text-slate-900">2,533 TPA</div>
-                          <div className="text-xs text-slate-500 mt-2">Zero cost (Estate).</div>
-                      </div>
-                  </div>
-              )}
-          </div>
-
-          {/* Process & Output */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-                  <h3 className="font-bold text-slate-900 mb-4">Operational Workflow</h3>
-                  {projectId === 'plan5' ? (
-                      <div className="relative space-y-6 pl-8 border-l-2 border-slate-200">
-                          <div className="relative">
-                              <div className="absolute -left-[41px] top-0 bg-green-100 p-2 rounded-full border border-green-200">
-                                  <SproutIcon className="h-4 w-4 text-green-600" />
-                              </div>
-                              <h4 className="font-bold text-slate-800">1. Precision Cultivation</h4>
-                              <p className="text-sm text-slate-500">10,240m² Greenhouse. UV-B lighting induces stress response for max potency.</p>
-                          </div>
-                          <div className="relative">
-                              <div className="absolute -left-[41px] top-0 bg-blue-100 p-2 rounded-full border border-blue-200">
-                                  <Recycle className="h-4 w-4 text-blue-600" />
-                              </div>
-                              <h4 className="font-bold text-blue-800">2. Enzyme Preservation (Moat)</h4>
-                              <p className="text-sm text-slate-500">Freeze drying at -40°C preserves Myrosinase. Competitors use heat, destroying it.</p>
-                          </div>
-                          <div className="relative">
-                              <div className="absolute -left-[41px] top-0 bg-purple-100 p-2 rounded-full border border-purple-200">
-                                  <ShieldCheck className="h-4 w-4 text-purple-600" />
-                              </div>
-                              <h4 className="font-bold text-purple-800">3. Cleanroom Encapsulation</h4>
-                              <p className="text-sm text-slate-500">ISO Class 7 environment. 100% Solar ensures zero pressure-loss contamination.</p>
-                          </div>
-                      </div>
-                  ) : projectId === 'plan3b' ? (
-                      <div className="relative space-y-6 pl-8 border-l-2 border-slate-200">
-                          <div className="relative">
-                              <div className="absolute -left-[41px] top-0 bg-emerald-100 p-2 rounded-full border border-emerald-200">
-                                  <Recycle className="h-4 w-4 text-emerald-600" />
-                              </div>
-                              <h4 className="font-bold text-slate-800">1. Waste to Value</h4>
-                              <p className="text-sm text-slate-500">250T wood prunings chipped and sterilized. From farm waste to high-value substrate.</p>
-                          </div>
-                          <div className="relative">
-                              <div className="absolute -left-[41px] top-0 bg-purple-100 p-2 rounded-full border border-purple-200">
-                                  <SproutIcon className="h-4 w-4 text-purple-600" />
-                              </div>
-                              <h4 className="font-bold text-purple-800">2. Smart Fruiting</h4>
-                              <p className="text-sm text-slate-500">Automated containers trigger pinning via temperature shock. Bio-mimicry of autumn rains.</p>
-                          </div>
-                          <div className="relative">
-                              <div className="absolute -left-[41px] top-0 bg-blue-100 p-2 rounded-full border border-blue-200">
-                                  <Pill className="h-4 w-4 text-blue-600" />
-                              </div>
-                              <h4 className="font-bold text-blue-800">3. Pharma Encapsulation</h4>
-                              <p className="text-sm text-slate-500">Freeze-dried powder encapsulated in ISO 7 cleanroom. 87% Gross Margin product.</p>
-                          </div>
-                      </div>
-                  ) : projectId === 'plan4' ? (
-                      <div className="relative space-y-6 pl-8 border-l-2 border-slate-200">
-                          <div className="relative">
-                              <div className="absolute -left-[41px] top-0 bg-yellow-100 p-2 rounded-full border border-yellow-200">
-                                  <Beaker className="h-4 w-4 text-yellow-600" />
-                              </div>
-                              <h4 className="font-bold text-slate-800">1. Culture & Ferment</h4>
-                              <p className="text-sm text-slate-500">Macadamia milk (Plan 2) inoculated with specific Lactobacillus strains. Curd formation.</p>
-                          </div>
-                          <div className="relative">
-                              <div className="absolute -left-[41px] top-0 bg-slate-100 p-2 rounded-full border border-slate-200">
-                                  <Box className="h-4 w-4 text-slate-600" />
-                              </div>
-                              <h4 className="font-bold text-slate-800">2. Cave Ageing</h4>
-                              <p className="text-sm text-slate-500">12-14°C controlled environment. 2-12 months maturation develops crystal crunch.</p>
-                          </div>
-                          <div className="relative">
-                              <div className="absolute -left-[41px] top-0 bg-red-100 p-2 rounded-full border border-red-200">
-                                  <ShieldCheck className="h-4 w-4 text-red-600" />
-                              </div>
-                              <h4 className="font-bold text-red-800">3. Hand Waxing</h4>
-                              <p className="text-sm text-slate-500">Seals cheese for 18-month ambient shelf life. Eliminates cold chain costs.</p>
-                          </div>
-                      </div>
-                  ) : projectId === 'plan3' ? (
-                      <div className="relative space-y-6 pl-8 border-l-2 border-slate-200">
-                          <div className="relative">
-                              <div className="absolute -left-[41px] top-0 bg-amber-100 p-2 rounded-full border border-amber-200">
-                                  <ChefHat className="h-4 w-4 text-amber-600" />
-                              </div>
-                              <h4 className="font-bold text-slate-800">1. Protein Texturisation</h4>
-                              <p className="text-sm text-slate-500">HMMA extrusion creates muscle fibers. Seitan hand-washing creates premium deli texture.</p>
-                          </div>
-                          <div className="relative">
-                              <div className="absolute -left-[41px] top-0 bg-red-100 p-2 rounded-full border border-red-200">
-                                  <Flame className="h-4 w-4 text-red-600" />
-                              </div>
-                              <h4 className="font-bold text-red-800">2. Authentic Smoking</h4>
-                              <p className="text-sm text-slate-500">Real applewood/oak smoke for 2-8 hours. Creates true Boerewors/Bacon flavour.</p>
-                          </div>
-                          <div className="relative">
-                              <div className="absolute -left-[41px] top-0 bg-slate-100 p-2 rounded-full border border-slate-200">
-                                  <Package className="h-4 w-4 text-slate-600" />
-                              </div>
-                              <h4 className="font-bold text-slate-800">3. Retort Revolution</h4>
-                              <p className="text-sm text-slate-500">30% output goes to Retort Pouches. 121°C sterilization = 18-month ambient shelf life.</p>
-                          </div>
-                      </div>
-                  ) : projectId === 'plan2' ? (
-                      <div className="relative space-y-6 pl-8 border-l-2 border-slate-200">
-                          <div className="relative">
-                              <div className="absolute -left-[41px] top-0 bg-green-100 p-2 rounded-full border border-green-200">
-                                  <Trees className="h-4 w-4 text-green-600" />
-                              </div>
-                              <h4 className="font-bold text-slate-800">1. Agroforestry System</h4>
-                              <p className="text-sm text-slate-500">Macadamia trees planted with Soybean intercrop. Synergistic nutrient exchange and microclimate creation.</p>
-                          </div>
-                          <div className="relative">
-                              <div className="absolute -left-[41px] top-0 bg-amber-100 p-2 rounded-full border border-amber-200">
-                                  <Beaker className="h-4 w-4 text-amber-600" />
-                              </div>
-                              <h4 className="font-bold text-amber-800">2. Dual-Phase Dairy</h4>
-                              <p className="text-sm text-slate-500">Years 1-5: Soy Milk. Years 6+: Premium Mac Milk. Seamless transition in same facility.</p>
-                          </div>
-                          <div className="relative">
-                              <div className="absolute -left-[41px] top-0 bg-blue-100 p-2 rounded-full border border-blue-200">
-                                  <Package className="h-4 w-4 text-blue-600" />
-                              </div>
-                              <h4 className="font-bold text-blue-800">3. UHT & Cold Chain</h4>
-                              <p className="text-sm text-slate-500">UHT for ambient shelf-life (retail). Cold chain for yoghurt/cheese (fresh).</p>
-                          </div>
-                      </div>
-                  ) : projectId === 'plan1' ? (
-                      <div className="relative space-y-6 pl-8 border-l-2 border-slate-200">
-                          <div className="relative">
-                              <div className="absolute -left-[41px] top-0 bg-blue-100 p-2 rounded-full border border-blue-200">
-                                  <Factory className="h-4 w-4 text-blue-600" />
-                              </div>
-                              <h4 className="font-bold text-slate-800">1. Water Mastery</h4>
-                              <p className="text-sm text-slate-500">Underground harvesting + Magnetic filtration. 23% yield boost.</p>
-                          </div>
-                          <div className="relative">
-                              <div className="absolute -left-[41px] top-0 bg-slate-100 p-2 rounded-full border border-slate-200">
-                                  <Layers className="h-4 w-4 text-slate-600" />
-                              </div>
-                              <h4 className="font-bold text-slate-800">2. Soil Remineralisation</h4>
-                              <p className="text-sm text-slate-500">Rock Dust (Basalt) crushing. Adds trace minerals for 50+ years.</p>
-                          </div>
-                          <div className="relative">
-                              <div className="absolute -left-[41px] top-0 bg-emerald-100 p-2 rounded-full border border-emerald-200">
-                                  <SproutIcon className="h-4 w-4 text-emerald-600" />
-                              </div>
-                              <h4 className="font-bold text-emerald-800">3. Regenerative Production</h4>
-                              <p className="text-sm text-slate-500">Intensive vegetables + Macadamia/Soy intercrop. Zero chemical inputs.</p>
-                          </div>
-                      </div>
-                  ) : (
-                      <div className="relative space-y-6 pl-8 border-l-2 border-slate-200">
-                          <div className="relative">
-                              <div className="absolute -left-[41px] top-0 bg-slate-100 p-2 rounded-full border border-slate-200">
-                                  <Scale className="h-4 w-4 text-slate-600" />
-                              </div>
-                              <h4 className="font-bold text-slate-800">1. Receiving & QC</h4>
-                              <p className="text-sm text-slate-500">Weighing, moisture testing (&lt;20%), and sorting.</p>
-                          </div>
-                          <div className="relative">
-                              <div className="absolute -left-[41px] top-0 bg-emerald-100 p-2 rounded-full border border-emerald-200">
-                                  <Recycle className="h-4 w-4 text-emerald-600" />
-                              </div>
-                              <h4 className="font-bold text-emerald-800">2. Pelletisation (Moat)</h4>
-                              <p className="text-sm text-slate-500">2.5T/hr unit converts ANY organic material into 6-8mm pellets. Enables diversity.</p>
-                          </div>
-                          <div className="relative">
-                              <div className="absolute -left-[41px] top-0 bg-amber-100 p-2 rounded-full border border-amber-200">
-                                  <Zap className="h-4 w-4 text-amber-600" />
-                              </div>
-                              <h4 className="font-bold text-amber-800">3. Continuous Pyrolysis</h4>
-                              <p className="text-sm text-slate-500">500°C, Oxygen-free, 24/7 operation (93% uptime).</p>
-                          </div>
-                      </div>
-                  )}
-              </div>
-              
-              <div className="bg-slate-800 text-white p-6 rounded-xl shadow-sm border border-slate-700">
-                  <h3 className="font-bold text-white mb-4 flex items-center gap-2">
-                      <TrendingUp className="h-4 w-4" />
-                      Output Value {projectId === 'plan2' || projectId === 'plan4' ? '(Year 7)' : projectId === 'plan1' ? '(Year 1)' : '(Year 3)'}
-                  </h3>
-                  {projectId === 'plan5' ? (
-                      <div className="space-y-4">
-                          <div className="pb-4 border-b border-slate-700">
-                              <div className="text-xs text-slate-400 uppercase">Broccoli Powder</div>
-                              <div className="text-xl font-bold text-emerald-400">R 325.0M</div>
-                              <div className="text-sm text-slate-300">13T Dry / 130T Fresh</div>
-                          </div>
-                          <div className="pb-4 border-b border-slate-700">
-                              <div className="text-xs text-slate-400 uppercase">Retail Capsules</div>
-                              <div className="text-xl font-bold text-cyan-400">R 120.0M</div>
-                              <div className="text-sm text-slate-300">5 Million Units</div>
-                          </div>
-                           <div>
-                              <div className="text-xs text-slate-400 uppercase">Energy Savings</div>
-                              <div className="text-xl font-bold text-amber-400">R 57.0M</div>
-                              <div className="text-sm text-slate-300">Avoided grid cost</div>
-                          </div>
-                      </div>
-                  ) : projectId === 'plan3b' ? (
-                      <div className="space-y-4">
-                          <div className="pb-4 border-b border-slate-700">
-                              <div className="text-xs text-slate-400 uppercase">Export Dried</div>
-                              <div className="text-xl font-bold text-purple-400">R 9.49M</div>
-                              <div className="text-sm text-slate-300">Premium Organic to USA/EU</div>
-                          </div>
-                          <div className="pb-4 border-b border-slate-700">
-                              <div className="text-xs text-slate-400 uppercase">Medicinal Capsules</div>
-                              <div className="text-xl font-bold text-blue-400">R 8.15M</div>
-                              <div className="text-sm text-slate-300">87% Gross Margin</div>
-                          </div>
-                           <div>
-                              <div className="text-xs text-slate-400 uppercase">Culinary & Blends</div>
-                              <div className="text-xl font-bold text-emerald-400">R 12.4M</div>
-                              <div className="text-sm text-slate-300">Fresh retail & value added</div>
-                          </div>
-                      </div>
-                  ) : projectId === 'plan4' ? (
-                       <div className="space-y-4">
-                          <div className="pb-4 border-b border-slate-700">
-                              <div className="text-xs text-slate-400 uppercase">Artisan Cheese</div>
-                              <div className="text-xl font-bold text-yellow-400">R 36.0M</div>
-                              <div className="text-sm text-slate-300">72.6T @ R500/kg</div>
-                          </div>
-                          <div className="pb-4 border-b border-slate-700">
-                              <div className="text-xs text-slate-400 uppercase">Raw Honey</div>
-                              <div className="text-xl font-bold text-amber-400">R 3.0M</div>
-                              <div className="text-sm text-slate-300">22T Production</div>
-                          </div>
-                          <div>
-                              <div className="text-xs text-slate-400 uppercase">Pollination Value</div>
-                              <div className="text-xl font-bold text-emerald-400">R 14.0M</div>
-                              <div className="text-sm text-slate-300">To Plan 2 (Macs)</div>
-                          </div>
-                      </div>
-                  ) : projectId === 'plan3' ? (
-                       <div className="space-y-4">
-                          <div className="pb-4 border-b border-slate-700">
-                              <div className="text-xs text-slate-400 uppercase">Smokehouse Range</div>
-                              <div className="text-xl font-bold text-orange-400">R 47.9M</div>
-                              <div className="text-sm text-slate-300">Boerewors, Bacon, Ribs</div>
-                          </div>
-                          <div className="pb-4 border-b border-slate-700">
-                              <div className="text-xs text-slate-400 uppercase">HMMA & Convenience</div>
-                              <div className="text-xl font-bold text-blue-400">R 58.6M</div>
-                              <div className="text-sm text-slate-300">Burgers, Nuggets, Mince</div>
-                          </div>
-                          <div>
-                              <div className="text-xs text-slate-400 uppercase">Seitan Deli</div>
-                              <div className="text-xl font-bold text-red-400">R 28.3M</div>
-                              <div className="text-sm text-slate-300">Premium Cold Cuts</div>
-                          </div>
-                      </div>
-                  ) : projectId === 'plan2' ? (
-                      <div className="space-y-4">
-                           <div className="pb-4 border-b border-slate-700">
-                              <div className="text-xs text-slate-400 uppercase">Mac Dairy Products</div>
-                              <div className="text-xl font-bold text-emerald-400">R 90.8M</div>
-                              <div className="text-sm text-slate-300">Premium Milk/Yoghurt</div>
-                          </div>
-                          <div className="pb-4 border-b border-slate-700">
-                              <div className="text-xs text-slate-400 uppercase">Mac Confectionery</div>
-                              <div className="text-xl font-bold text-amber-400">R 57.5M</div>
-                              <div className="text-sm text-slate-300">Chocolate & Ice Cream</div>
-                          </div>
-                          <div>
-                              <div className="text-xs text-slate-400 uppercase">Bee/Honey Value</div>
-                              <div className="text-xl font-bold text-yellow-400">R 20.9M</div>
-                              <div className="text-sm text-slate-300">Ecosys Services</div>
-                          </div>
-                      </div>
-                  ) : projectId === 'plan1' ? (
-                      <div className="space-y-4">
-                           <div className="pb-4 border-b border-slate-700">
-                              <div className="text-xs text-slate-400 uppercase">Vegetables (Premium)</div>
-                              <div className="text-xl font-bold text-green-400">R 20.5M</div>
-                              <div className="text-sm text-slate-300">High-Brix (Rock Dust)</div>
-                          </div>
-                          <div className="pb-4 border-b border-slate-700">
-                              <div className="text-xs text-slate-400 uppercase">Logistics Services</div>
-                              <div className="text-xl font-bold text-blue-400">R 4.7M</div>
-                              <div className="text-sm text-slate-300">Transporting Inputs</div>
-                          </div>
-                          <div>
-                              <div className="text-xs text-slate-400 uppercase">Compost & Dust</div>
-                              <div className="text-xl font-bold text-amber-400">R 4.1M</div>
-                              <div className="text-sm text-slate-300">Soil Amendments</div>
-                          </div>
-                      </div>
-                  ) : (
-                      <div className="space-y-4">
-                          <div className="pb-4 border-b border-slate-700">
-                              <div className="text-xs text-slate-400 uppercase">Bio-Diesel</div>
-                              <div className="text-xl font-bold text-emerald-400">R 60.4M</div>
-                              <div className="text-sm text-slate-300">3.45 Million Litres</div>
-                          </div>
-                           <div className="pb-4 border-b border-slate-700">
-                              <div className="text-xs text-slate-400 uppercase">Biochar</div>
-                              <div className="text-xl font-bold text-slate-400">R 22.5M</div>
-                              <div className="text-sm text-slate-300">3,000 Tonnes</div>
-                          </div>
-                          <div>
-                              <div className="text-xs text-slate-400 uppercase">Logistics Savings</div>
-                              <div className="text-xl font-bold text-blue-400">R 6.9M</div>
-                              <div className="text-sm text-slate-300">In-house Fleet</div>
-                          </div>
-                      </div>
-                  )}
-              </div>
-          </div>
-        </div>
-      )}
+      {/* PART 2: DYNAMIC NODE INSPECTOR */}
+      <div id="node-inspector" className="scroll-mt-24">
+          <NodeDetailPanel nodeId={selectedNode} />
+      </div>
     </div>
   );
 };

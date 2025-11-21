@@ -249,13 +249,8 @@ const App: React.FC = () => {
 
   const handleLandingEnter = (targetTab: string = 'dashboard') => {
       stopCurrentAudio(); // Stop audio when leaving landing page
-      if (targetTab === 'storyboard') {
-          setActiveProjectId('master');
-          setActiveTab('storyboard');
-      } else {
-          setActiveProjectId('master');
-          setActiveTab('dashboard');
-      }
+      setActiveProjectId('master');
+      setActiveTab(targetTab);
       setShowLanding(false);
   };
 
@@ -273,7 +268,12 @@ const App: React.FC = () => {
     };
 
     if (activeProjectId === 'master') {
+        // Master Plan Routing
         if (activeTab === 'storyboard') return <AnimationStoryboard />;
+        if (activeTab === 'model3d') return <Facility3D projectId="master" />;
+        if (activeTab === 'system') return <SystemLogic projectId="master" />;
+        if (activeTab === 'impact') return <Impact projectId="master" />;
+        // Default to Dashboard
         return <MasterDashboard onSelectProject={handleProjectChange} {...audioProps} />;
     }
 
@@ -356,12 +356,20 @@ const App: React.FC = () => {
                 <div>
                     <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
                         {activeProjectId === 'master' 
-                            ? (activeTab === 'storyboard' ? 'The Visual Journey' : 'Master Investment Portfolio')
+                            ? (activeTab === 'storyboard' ? 'The Visual Journey' : 
+                               activeTab === 'model3d' ? 'Estate 3D Digital Twin' :
+                               activeTab === 'system' ? 'System Integration Blueprint' :
+                               activeTab === 'impact' ? 'Double Bottom Line Impact' :
+                               'Master Investment Portfolio')
                             : projects.find(p => p.id === activeProjectId)?.name}
                     </h1>
                     <p className="text-slate-500 text-xs sm:text-sm">
                         {activeProjectId === 'master' 
-                            ? (activeTab === 'storyboard' ? '10 Illustrative Moments that define the Ubuntu Model' : 'Real-time ecosystem monitoring and capital allocation')
+                            ? (activeTab === 'storyboard' ? '10 Illustrative Moments that define the Ubuntu Model' : 
+                               activeTab === 'model3d' ? '645 Hectare interactive facility and agricultural zones' :
+                               activeTab === 'system' ? 'Interconnected flows of energy, water, and biomass' :
+                               activeTab === 'impact' ? 'Quantifying the regenerative outcomes' :
+                               'Real-time ecosystem monitoring and capital allocation')
                             : navItems.find(i => i.id === activeTab)?.label}
                     </p>
                 </div>
@@ -383,4 +391,3 @@ const App: React.FC = () => {
 };
 
 export default App;
-    

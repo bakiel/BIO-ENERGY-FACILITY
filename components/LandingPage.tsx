@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ArrowRight, Leaf, Zap, Users, TrendingUp, ShieldCheck, Factory, MapPin, Droplets, Layers, Battery, Truck, Coins, Globe, PlayCircle, Star } from 'lucide-react';
+import { ArrowRight, Leaf, Zap, Users, TrendingUp, ShieldCheck, Factory, MapPin, Droplets, Layers, Battery, Truck, Coins, Globe, PlayCircle, Star, Box } from 'lucide-react';
 import { voiceScripts } from '../data/voiceScripts';
 import AudioButton from './AudioButton';
 
@@ -104,7 +104,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter, isPlaying, currentPl
                 </div>
                 
                 {/* CTA Buttons */}
-                <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto animate-fade-in-up delay-300">
+                <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto animate-fade-in-up delay-300 flex-wrap justify-center lg:justify-start">
                     <button 
                         onClick={() => onEnter('dashboard')}
                         className="group bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all shadow-[0_0_20px_rgba(16,185,129,0.2)] hover:shadow-[0_0_30px_rgba(16,185,129,0.4)] flex items-center justify-center gap-3 transform hover:-translate-y-1 w-full sm:w-auto"
@@ -112,7 +112,17 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnter, isPlaying, currentPl
                         View Investment Model
                         <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                     </button>
-                     <button 
+
+                    {/* 3D BUTTON ADDED HERE AS REQUESTED */}
+                    <button 
+                        onClick={() => onEnter('model3d')}
+                        className="group bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/30 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-3 backdrop-blur-sm transform hover:-translate-y-1 w-full sm:w-auto"
+                    >
+                        <Box className="w-5 h-5 text-cyan-400 group-hover:scale-110 transition-transform" />
+                        3D Digital Twin
+                    </button>
+                     
+                    <button 
                         onClick={() => onEnter('storyboard')}
                         className="group bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/30 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-3 backdrop-blur-sm transform hover:-translate-y-1 w-full sm:w-auto"
                     >

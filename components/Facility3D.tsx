@@ -1,1882 +1,510 @@
 
-import React, { useState, useRef, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Text, SoftShadows, Instance, Instances, Environment, Float, Line, Html, useCursor } from '@react-three/drei';
-import { X, Info, Activity, Sprout, Factory, Clock, Calendar, Zap, Droplets, Truck, Recycle, Wind, MousePointerClick, DollarSign, BarChart3, ShieldCheck } from 'lucide-react';
+import { 
+  OrbitControls, 
+  Instance, 
+  Instances, 
+  Environment, 
+  Html, 
+  useCursor, 
+  Cloud, 
+  Stars,
+  QuadraticBezierLine,
+  Sparkles
+} from '@react-three/drei';
 import * as THREE from 'three';
+import { projects } from '../data/projects';
+import { X } from 'lucide-react';
 
 interface Facility3DProps {
     projectId: string;
 }
 
-// --- Data Models ---
-
-interface FacilityObjectInfo {
-    id: string;
-    name: string;
-    type: string;
-    description: string;
-    capacity?: string;
-    height?: number;
-    stats?: { label: string; value: string; icon: any; color: string }[]; // Optional extended stats
+interface FacilityProps {
+    selected: boolean;
+    onSelect: () => void;
 }
 
-// Master Plan Layout Data
-const facilityDataMaster: Record<string, FacilityObjectInfo> = {
-    'p1_packhouse': {
-        id: 'p1_packhouse',
-        name: "Core Farm Hub",
-        type: "Plan 1: Agriculture",
-        description: "The operational heart of the estate. Features a 2,000m² packhouse, cold storage, and logistics center handling 1,149T of fresh produce annually.",
-        capacity: "Central Node",
-        height: 6,
-        stats: [
-            { label: "Year 1 Rev", value: "R 34.3M", icon: DollarSign, color: "text-emerald-400" },
-            { label: "Jobs", value: "455", icon: Activity, color: "text-blue-400" }
-        ]
-    },
-    'p1_solar': {
-        id: 'p1_solar',
-        name: "500kVA Solar Array",
-        type: "Plan 1: Energy",
-        description: "Primary renewable energy source for the Core Farm. 490 kWp capacity ensures irrigation and processing resilience against grid failure.",
-        capacity: "490 kWp",
-        height: 1,
-        stats: [
-            { label: "Uptime", value: "100%", icon: Zap, color: "text-amber-400" },
-            { label: "Savings", value: "R 2.1M/Yr", icon: DollarSign, color: "text-emerald-400" }
-        ]
-    },
-    'p1_water': {
-        id: 'p1_water',
-        name: "Water Security Hub",
-        type: "Plan 1: Utilities",
-        description: "19ML Dam and filtration network connecting 9 boreholes. Provides drought-proof irrigation security for the entire cluster.",
-        capacity: "319KL Storage",
-        height: 4,
-        stats: [
-            { label: "Capacity", value: "197M L/Yr", icon: Droplets, color: "text-cyan-400" },
-            { label: "Risk", value: "0% (Drought)", icon: Activity, color: "text-emerald-400" }
-        ]
-    },
-    'p2_orchard': {
-        id: 'p2_orchard',
-        name: "Agroforestry System",
-        type: "Plan 2: Dairy & Nuts",
-        description: "180ha of Macadamia trees intercropped with Soybeans. Creates a microclimate reducing water use by 20% while producing premium dairy feedstock.",
-        capacity: "180 Hectares",
-        height: 4,
-        stats: [
-            { label: "Year 7 Rev", value: "R 196.8M", icon: DollarSign, color: "text-green-400" },
-            { label: "Carbon", value: "-9,000 T", icon: Wind, color: "text-teal-400" }
-        ]
-    },
-    'p3_factory': {
-        id: 'p3_factory',
-        name: "Plant Protein Factory",
-        type: "Plan 3: Processing",
-        description: "Advanced extrusion facility producing 858T of high-fidelity plant meat annually. Includes specialized Seitan washing and HMMA texturization.",
-        capacity: "3.4 T/Day",
-        height: 7,
-        stats: [
-            { label: "Year 3 Rev", value: "R 114.9M", icon: DollarSign, color: "text-amber-400" },
-            { label: "Govt Orders", value: "28%", icon: Activity, color: "text-blue-400" }
-        ]
-    },
-    'p3b_cluster': { 
-        id: 'p3b_cluster',
-        name: "Mycology Cluster",
-        type: "Plan 3B: Biotech",
-        description: "High-tech climate controlled containers for Lion's Mane cultivation. Converts farm waste (prunings) into high-value medicinal extracts.",
-        capacity: "16 Containers",
-        height: 3,
-        stats: [
-            { label: "Year 3 Rev", value: "R 30.8M", icon: DollarSign, color: "text-purple-400" },
-            { label: "Margin", value: "40%", icon: BarChart3, color: "text-emerald-400" }
-        ]
-    },
-    'p4_cave': {
-        id: 'p4_cave',
-        name: "Cheese Caves",
-        type: "Plan 4: Artisan",
-        description: "Underground maturation facility for vegan cheese. Uses traditional culturing and waxing to create shelf-stable, export-grade products.",
-        capacity: "20k Wheels",
-        height: 4,
-        stats: [
-            { label: "Year 7 Rev", value: "R 39.6M", icon: DollarSign, color: "text-yellow-400" },
-            { label: "Pollination", value: "+40% Yield", icon: Sprout, color: "text-amber-400" }
-        ]
-    },
-    'p5_greenhouse': {
-        id: 'p5_greenhouse',
-        name: "Pharma Greenhouse",
-        type: "Plan 5: Nutraceuticals",
-        description: "10,240m² precision environment stimulating sulforaphane production in broccoli sprouts. Integrated freeze-drying for pharma-grade potency.",
-        capacity: "10,240m²",
-        height: 5,
-        stats: [
-            { label: "Year 3 Rev", value: "R 575.2M", icon: DollarSign, color: "text-cyan-400" },
-            { label: "EBITDA", value: "73.8%", icon: BarChart3, color: "text-emerald-400" }
-        ]
-    },
-    'p6_reactor': {
-        id: 'p6_reactor',
-        name: "Bio-Refinery",
-        type: "Plan 6: Energy",
-        description: "Pyrolysis reactor converting diverse biomass into 3.45M litres of Bio-diesel. Powers the entire estate's logistics fleet.",
-        capacity: "3.45M Litres",
-        height: 10,
-        stats: [
-            { label: "Year 3 Rev", value: "R 89.8M", icon: DollarSign, color: "text-emerald-400" },
-            { label: "DSCR", value: "12.9x", icon: ShieldCheck, color: "text-blue-400" }
-        ]
-    }
-};
+// --- CONSTANTS & GRID MATH ---
+const ZONE_SPACING = 120; // Spacing between zones
+const SPEED_FACTOR = 0.1; // Very slow, cinematic animation
+const Y_GROUND = -2.0;    // Ground level lowered to prevent z-fighting
+const Y_PLATE = 0.6;      // Raised base plates to ensure separation
+const Y_MARKING = 1.2;    // Markings/Geometry sitting well above plates
 
-// Plan 6 Layout
-const facilityDataPlan6: Record<string, FacilityObjectInfo> = {
-    'feedstock': {
-        id: 'feedstock',
-        name: "Feedstock Reception",
-        type: "Logistics & Pre-processing",
-        description: "Receives diverse organic waste including municipal garden waste and agricultural residues. Sorts and stages materials for processing.",
-        capacity: "30,997 Tonnes / Year",
-        height: 3
-    },
-    'pelletizer': {
-        id: 'pelletizer',
-        name: "Pelletisation Plant",
-        type: "Pre-Processing Unit",
-        description: "Grinds, dries, and presses raw heterogeneous biomass into uniform 6-8mm pellets. This standardization is the key competitive advantage.",
-        capacity: "2.5 Tonnes / Hour",
-        height: 6
-    },
-    'reactor': {
-        id: 'reactor',
-        name: "Pyrolysis Reactor",
-        type: "Core Processing Unit",
-        description: "Continuous horizontal screw reactor operating at 500°C in an oxygen-free environment. Thermally decomposes pellets into bio-oil.",
-        capacity: "2 Tonnes / Hour",
-        height: 10
-    },
-    'refinery': {
-        id: 'refinery',
-        name: "Bio-Refinery Unit",
-        type: "Post-Processing",
-        description: "Features a 12-metre fractional distillation column and catalytic upgrading system. Refines crude bio-oil into SANS 1935 biodiesel.",
-        capacity: "1,000 Litres / Hour",
-        height: 8
-    },
-    'storage': {
-        id: 'storage',
-        name: "Storage Tank Farm",
-        type: "Inventory Management",
-        description: "Secure bunded storage area for finished bio-diesel ready for distribution and buffer storage for crude inputs.",
-        capacity: "500,000 Litres Total",
-        height: 8
-    },
-    'office': {
-        id: 'office',
-        name: "Operations Centre",
-        type: "Admin & QC",
-        description: "Houses the SCADA control room for 24/7 monitoring, the SANS 1935 quality control laboratory, and staff amenities.",
-        capacity: "Supports 19 Staff",
-        height: 4
-    }
-};
+// --- 1. UTILITY COMPONENTS ---
 
-// Plan 5 Layout
-const facilityDataPlan5: Record<string, FacilityObjectInfo> = {
-    'greenhouse': {
-        id: 'greenhouse',
-        name: "High-Tech Greenhouse",
-        type: "Cultivation Zone",
-        description: "10,240m² multi-span polycarbonate structure. Precision climate control (18-22°C) and UV-B lighting induce stress response for max potency.",
-        capacity: "10,240m² / 130T Yield",
-        height: 5
-    },
-    'processing': {
-        id: 'processing',
-        name: "Processing Building",
-        type: "Pharma Manufacturing",
-        description: "2,500m² facility housing freeze dryers, cryo-mills, and ISO Class 7 cleanrooms for encapsulation. 24/7 operation.",
-        capacity: "200kg/day Freeze Dry",
-        height: 8
-    },
-    'solar': {
-        id: 'solar',
-        name: "4.5MW Solar Array",
-        type: "Energy Source",
-        description: "7,864 solar panels + 5.8MWh battery storage. Provides 100% off-grid power, ensuring zero contamination events.",
-        capacity: "4,561 kWp / 5.8MWh",
-        height: 1
-    },
-    'water': {
-        id: 'water',
-        name: "Water Treatment",
-        type: "Utilities",
-        description: "Shared borehole input with Ozone sterilization unit. Kills 99.99% of pathogens instantly.",
-        capacity: "200,000 L/Month",
-        height: 4
-    }
-};
+// Info Card Overlay
+const InfoCard = ({ id, onClose }: { id: string, onClose: () => void }) => {
+    const project = projects.find(p => p.id === id);
+    if (!project) return null;
 
-// Plan 3B Layout (Medicinal Mushrooms)
-const facilityDataPlan3b: Record<string, FacilityObjectInfo> = {
-    'containers': {
-        id: 'containers',
-        name: "Smart Grow Containers",
-        type: "Cultivation",
-        description: "16x 40ft High-Cube insulated containers with automated HVAC, humidification, and CO2 control for precision fruiting.",
-        capacity: "100T/Year",
-        height: 3
-    },
-    'substrate': {
-        id: 'substrate',
-        name: "Substrate Prep Hall",
-        type: "Pre-Processing",
-        description: "Facility for chipping wood prunings, mixing with nutrients, bagging, and autoclave sterilization (2x units).",
-        capacity: "14,400 Bags/Day",
-        height: 6
-    },
-    'lab': {
-        id: 'lab',
-        name: "Cleanroom & Lab",
-        type: "Inoculation",
-        description: "ISO Class 5 HEPA-filtered laboratory for spawn propagation and sterile bag inoculation.",
-        capacity: "Zero Contamination",
-        height: 4
-    },
-    'processing': {
-        id: 'processing',
-        name: "Encapsulation Unit",
-        type: "Manufacturing",
-        description: "GMP facility with freeze-dryers, mills, and automated capsule filling lines for retail product creation.",
-        capacity: "2M Bottles/Year",
-        height: 5
-    },
-    'solar': {
-        id: 'solar',
-        name: "Solar Allocation",
-        type: "Energy",
-        description: "Dedicated 50kW allocation from central array to power HVAC and autoclaves.",
-        capacity: "100% Renewable",
-        height: 1
-    }
-};
-
-// Plan 4 Layout (Cheese & Bees)
-const facilityDataPlan4: Record<string, FacilityObjectInfo> = {
-    'factory': {
-        id: 'factory',
-        name: "Artisan Creamery",
-        type: "Production",
-        description: "800m² purpose-built facility for fermentation, pressing, and hand-waxing. Food-grade epoxy floors and SS304 finishes.",
-        capacity: "72,666 kg/Year",
-        height: 6
-    },
-    'cave': {
-        id: 'cave',
-        name: "Ageing Caves",
-        type: "Maturation",
-        description: "Underground/insulated rooms maintained at 12-14°C and 75% humidity. Racking for 20,000 wheels (2-12 month inventory).",
-        capacity: "20,000 Wheels",
-        height: 4
-    },
-    'apiary': {
-        id: 'apiary',
-        name: "Flow Hive Apiary",
-        type: "Pollination",
-        description: "200 Flow Hives strategically placed near macadamia orchards. Provides +40% yield boost to Plan 2.",
-        capacity: "22T Honey/Year",
-        height: 2
-    },
-    'solar': {
-        id: 'solar',
-        name: "Solar + Battery",
-        type: "Energy",
-        description: "300kW Solar Array + 400kWh Battery. Critical for maintaining 24/7 climate control in ageing caves.",
-        capacity: "100% Off-Grid",
-        height: 1
-    },
-    'biodigester': {
-        id: 'biodigester',
-        name: "Biogas Unit",
-        type: "Waste-to-Energy",
-        description: "Converts nut pulp, shells, and wastewater into thermal energy for the boiler. Zero waste to landfill.",
-        capacity: "11,760 m³ Gas",
-        height: 3
-    }
-};
-
-// Plan 2 Layout
-const facilityDataPlan2: Record<string, FacilityObjectInfo> = {
-    'orchard': {
-        id: 'orchard',
-        name: "Macadamia Orchard",
-        type: "Agroforestry",
-        description: "180 Hectares of Macadamia trees intercropped with Soybeans. Trees create microclimate reducing evaporation by 20%.",
-        capacity: "36,000 Trees",
-        height: 4
-    },
-    'factory': {
-        id: 'factory',
-        name: "Dairy Factory",
-        type: "Processing",
-        description: "Main processing hall with wet milling, homogenisation (40MPa) and UHT sterilisation equipment.",
-        capacity: "2,000 L/Hour",
-        height: 7
-    },
-    'coldstore': {
-        id: 'coldstore',
-        name: "Cold Storage",
-        type: "Logistics",
-        description: "-20°C to +4°C multi-chamber cold storage for fresh yoghurt, cheese and ice cream.",
-        capacity: "250m² / 500 Pallets",
-        height: 6
-    },
-    'warehouse': {
-        id: 'warehouse',
-        name: "Dry Warehouse",
-        type: "Storage",
-        description: "Ambient storage for UHT milk cartons and packaging materials.",
-        capacity: "300m²",
-        height: 6
-    },
-    'water': {
-        id: 'water',
-        name: "Water Tanks",
-        type: "Utilities",
-        description: "Backup water storage for irrigation peaks and processing washdown.",
-        capacity: "100,000 Litres",
-        height: 5
-    }
-};
-
-// Plan 3 Layout (Meat Factory)
-const facilityDataPlan3: Record<string, FacilityObjectInfo> = {
-    'production': {
-        id: 'production',
-        name: "Main Production Hall",
-        type: "Manufacturing",
-        description: "Houses the 4 HMMA Extruders, Seitan Mixers, and Butcher lines. Segregated high-care zones.",
-        capacity: "3.4 Tonnes / Day",
-        height: 8
-    },
-    'smokehouse': {
-        id: 'smokehouse',
-        name: "Smokehouse Unit",
-        type: "Curing",
-        description: "Real wood smoke chambers (Applewood/Oak). 2-8 hour cycles for Boerewors, Bacon, and Ribs.",
-        capacity: "830kg / Day",
-        height: 6
-    },
-    'retort': {
-        id: 'retort',
-        name: "Retort Facility",
-        type: "Sterilization",
-        description: "Autoclave room for institutional pouch processing. 121°C sterilization.",
-        capacity: "1,800 Packs / Hr",
-        height: 7
-    },
-    'yeast': {
-        id: 'yeast',
-        name: "Yeast Fermentation",
-        type: "Biotech",
-        description: "Dedicated bio-reactors for nutritional yeast production. Fortified B-Vitamin output.",
-        capacity: "35.5T / Year",
-        height: 9
-    },
-    'logistics': {
-        id: 'logistics',
-        name: "Dispatch & Ambient Store",
-        type: "Warehousing",
-        description: "Storage for Retort Pouches (Ambient) and Cold Storage for Fresh Retail products.",
-        capacity: "400m² Area",
-        height: 6
-    }
-};
-
-// Plan 1 Layout (The Farm)
-const facilityDataPlan1: Record<string, FacilityObjectInfo> = {
-    'solar': {
-        id: 'solar',
-        name: "500kVA Solar Array",
-        type: "Energy",
-        description: "Ground mounted solar array providing off-grid power to the entire farm cluster.",
-        capacity: "490 kWp",
-        height: 1
-    },
-    'water': {
-        id: 'water',
-        name: "Water Hub",
-        type: "Utilities",
-        description: "19ML Dam + 319KL Underground Tanks + RO/Magnetic Filtration plant.",
-        capacity: "Drought Proof",
-        height: 2
-    },
-    'compost': {
-        id: 'compost',
-        name: "Compost Yard",
-        type: "Regeneration",
-        description: "Aerobic windrows for EM-1 compost and Rock Dust crushing facility.",
-        capacity: "2,300T / Year",
-        height: 3
-    },
-    'packhouse': {
-        id: 'packhouse',
-        name: "Packhouse & Cold Store",
-        type: "Processing",
-        description: "Grading, washing, and cooling facility for fresh vegetable harvest.",
-        capacity: "2,000m²",
-        height: 6
-    },
-    'cultivation': {
-        id: 'cultivation',
-        name: "Vegetable Fields",
-        type: "Agriculture",
-        description: "40ha intensive vegetable production (Spinach, Tomatoes, Peppers).",
-        capacity: "1,149T / Year",
-        height: 1
-    }
-};
-
-// --- 3D Components ---
-
-const LabelCard = ({ position, text, subtext, color = "emerald", scale = 1 }: any) => {
-  return (
-    <Html position={position} center distanceFactor={20} occlude>
-         <div className="pointer-events-none select-none group" style={{ transform: `scale(${scale})` }}>
-            <div className="flex flex-col items-center transition-transform duration-300 hover:scale-105">
-                {/* Card Body */}
-                <div className="bg-slate-900/95 backdrop-blur-md p-2 md:p-3 rounded-lg border border-slate-700 shadow-2xl min-w-[100px] md:min-w-[140px] text-center relative z-10">
-                    <div className={`text-[8px] md:text-[10px] font-bold uppercase tracking-wider mb-1 text-${color}-400`}>
-                        {subtext || 'Facility'}
+    return (
+        <Html position={[0, 40, 0]} center zIndexRange={[100, 0]} distanceFactor={120}>
+            <div 
+                className="w-64 bg-slate-900/95 text-white p-4 rounded-xl border border-slate-600 shadow-2xl backdrop-blur-md flex flex-col gap-2 cursor-default text-left animate-in fade-in zoom-in duration-200"
+                onClick={(e) => e.stopPropagation()} 
+            >
+                <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${project.color.replace('bg-', 'bg-')}`}></div>
+                        <span className="text-[10px] font-bold uppercase text-slate-400">{project.type}</span>
                     </div>
-                    <div className="text-xs md:text-sm font-bold text-white leading-tight whitespace-nowrap">
-                        {text}
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onClose(); }}
+                        className="text-slate-400 hover:text-white transition-colors rounded-full p-1 hover:bg-slate-800"
+                    >
+                        <X size={14} />
+                    </button>
+                </div>
+                <h3 className="text-lg font-bold leading-tight">{project.name}</h3>
+                <p className="text-xs text-slate-400 leading-relaxed line-clamp-3">{project.shortDesc}</p>
+                
+                <div className="grid grid-cols-2 gap-2 mt-2 pt-3 border-t border-slate-800">
+                    <div>
+                        <span className="text-[9px] uppercase font-bold text-slate-500">Investment</span>
+                        <div className="text-sm font-bold text-emerald-400">{project.investment}</div>
+                    </div>
+                     <div>
+                        <span className="text-[9px] uppercase font-bold text-slate-500">Jobs</span>
+                        <div className="text-sm font-bold text-blue-400">{project.jobs}</div>
                     </div>
                 </div>
-                
-                {/* Connector Line */}
-                <div className="h-4 md:h-6 w-0.5 bg-slate-500/50 mt-0"></div>
-                
-                {/* Anchor Dot */}
-                <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>
             </div>
-        </div>
-    </Html>
-  )
+            <div className="w-px h-8 bg-slate-600 mx-auto"></div>
+            <div className="w-2 h-2 bg-white rounded-full mx-auto"></div>
+        </Html>
+    );
 }
 
-interface InteractiveProps {
-    id: string;
-    position: any;
-    color: string;
-    label?: string;
-    subtext?: string;
-    opacity?: number;
-    onSelect: (id: string) => void;
-    isSelected: boolean;
-}
-
-const Building = ({ id, position, args, color, label, subtext, opacity = 1, onSelect, isSelected }: InteractiveProps & { args: any }) => {
-    const [hovered, setHover] = useState(false);
-    useCursor(hovered);
-
-    const handleClick = (e: any) => {
-        e.stopPropagation();
-        onSelect(id);
-    };
-
-    const displayColor = isSelected ? '#10b981' : (hovered ? '#34d399' : color);
-
-    return (
-        <group position={position} onClick={handleClick}>
-            <mesh 
-                position={[0, args[1] / 2, 0]} 
-                castShadow 
-                receiveShadow
-                onPointerOver={() => setHover(true)}
-                onPointerOut={() => setHover(false)}
-            >
-                <boxGeometry args={args} />
-                <meshStandardMaterial color={displayColor} transparent opacity={opacity} />
-            </mesh>
-            {label && <LabelCard position={[0, args[1] + 2, 0]} text={label} subtext={subtext} color={isSelected ? 'emerald' : 'slate'} />}
-        </group>
-    );
-};
-
-const Tank = ({ id, position, height, radius, color, label, subtext, onSelect, isSelected }: InteractiveProps & { height: number, radius: number }) => {
-    const [hovered, setHover] = useState(false);
-    useCursor(hovered);
-
-    const handleClick = (e: any) => {
-        e.stopPropagation();
-        onSelect(id);
-    };
-
-    const displayColor = isSelected ? '#10b981' : (hovered ? '#34d399' : color);
-
-    return (
-        <group position={position} onClick={handleClick}>
-            <mesh 
-                position={[0, height / 2, 0]} 
-                castShadow 
-                receiveShadow
-                onPointerOver={() => setHover(true)}
-                onPointerOut={() => setHover(false)}
-            >
-                <cylinderGeometry args={[radius, radius, height, 32]} />
-                <meshStandardMaterial color={displayColor} />
-            </mesh>
-            {label && <LabelCard position={[0, height + 2, 0]} text={label} subtext={subtext} color={isSelected ? 'emerald' : 'slate'} />}
-        </group>
-    );
-};
-
-const Pile = ({ id, position, color, onSelect, isSelected }: InteractiveProps) => {
-    const [hovered, setHover] = useState(false);
-    useCursor(hovered);
-
-    const handleClick = (e: any) => {
-        e.stopPropagation();
-        onSelect(id);
-    };
-    
-    const displayColor = isSelected ? '#10b981' : (hovered ? '#34d399' : color);
-
-    return (
-        <mesh 
-            position={position} 
-            castShadow 
-            receiveShadow 
-            rotation={[0, Math.random() * Math.PI, 0]}
-            onClick={handleClick}
-            onPointerOver={() => setHover(true)}
-            onPointerOut={() => setHover(false)}
-        >
-            <coneGeometry args={[3, 2.5, 16]} />
-            <meshStandardMaterial color={displayColor} />
+// A visual base plate for each facility to demarcate space
+const ZonePlate = ({ size = [80, 80], color = "#1e293b" }) => (
+    <group position={[0, Y_PLATE, 0]}>
+        {/* Base Plane */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+            <planeGeometry args={[size[0], size[1]]} />
+            <meshStandardMaterial color={color} roughness={0.8} />
         </mesh>
-    )
-}
-
-const SelectionIndicator = ({ targetPosition, targetHeight }: { targetPosition: [number, number, number], targetHeight: number }) => {
-    return (
-        <group position={[targetPosition[0], targetPosition[1] + targetHeight + 4, targetPosition[2]]}>
-             <mesh rotation={[Math.PI, 0, 0]}>
-                <coneGeometry args={[1.5, 3, 8]} />
-                <meshStandardMaterial color="#10b981" emissive="#10b981" emissiveIntensity={0.8} />
-            </mesh>
+        {/* Blueprint Grid Border - Raised slightly relative to plate to prevent z-fighting */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.1, 0]}>
+            <ringGeometry args={[size[0]/2 - 1, size[0]/2, 4]} />
+            <meshBasicMaterial color="#ffffff" opacity={0.15} transparent />
+        </mesh>
+        {/* Corner Markers */}
+        <group>
+             {[-1, 1].map(x => [-1, 1].map(z => (
+                 <mesh key={`${x}-${z}`} position={[x * (size[0]/2), 0.5, z * (size[1]/2)]}>
+                     <boxGeometry args={[2, 1, 2]} />
+                     <meshStandardMaterial color="#475569" />
+                 </mesh>
+             )))}
         </group>
-    );
-};
+    </group>
+);
 
-// --- DYNAMIC FLOW COMPONENT ---
-
-interface FlowProps {
-    start: [number, number, number];
-    end: [number, number, number];
-    color: string;
-    label: string;
-    details: {
-        volume: string;
-        value: string;
-        icon: any;
-    };
-    arcHeight?: number;
-    dashed?: boolean;
-}
-
-const FlowLine = ({ start, end, color, label, details, arcHeight = 15, dashed = true }: FlowProps) => {
-    const [hovered, setHover] = useState(false);
-    useCursor(hovered);
-    const ref = useRef<any>(null);
-    const Icon = details.icon;
-
-    // Create Curve
+// Animated Flow Line (Slowed Down)
+const ResourceFlow = ({ start, end, color, label, speed = 1 }: { start: [number, number, number], end: [number, number, number], color: string, label?: string, speed?: number }) => {
+    const [pct, setPct] = useState(0);
     const curve = useMemo(() => {
         const midX = (start[0] + end[0]) / 2;
         const midZ = (start[2] + end[2]) / 2;
-        return new THREE.CatmullRomCurve3([
+        const height = 40; // Higher arc
+        return new THREE.QuadraticBezierCurve3(
             new THREE.Vector3(...start),
-            new THREE.Vector3(midX, arcHeight, midZ),
+            new THREE.Vector3(midX, height, midZ),
             new THREE.Vector3(...end)
-        ]);
-    }, [start, end, arcHeight]);
-    
-    const points = useMemo(() => curve.getPoints(40), [curve]);
+        );
+    }, [start, end]);
 
-    // Animate flow
-    useFrame((state) => {
-        if (ref.current && dashed) {
-            ref.current.material.dashOffset -= 0.01;
-        }
+    useFrame((state, delta) => {
+        setPct((p) => (p + delta * 0.1 * speed * SPEED_FACTOR) % 1);
     });
 
+    const point = curve.getPoint(pct);
+
     return (
-        <group 
-            onPointerOver={(e) => { e.stopPropagation(); setHover(true); }} 
-            onPointerOut={(e) => { e.stopPropagation(); setHover(false); }}
-        >
-            {/* Visible Flow Line */}
-            <Line 
-                ref={ref}
-                points={points} 
-                color={hovered ? '#ffffff' : color} 
-                lineWidth={hovered ? 5 : 3} 
-                dashed={dashed}
-                dashScale={2}
-                dashSize={2}
-                gapSize={1}
-                opacity={hovered ? 1 : 0.6}
-                transparent
+        <group>
+            <QuadraticBezierLine 
+                start={start} 
+                end={end} 
+                mid={[(start[0] + end[0]) / 2, 40, (start[2] + end[2]) / 2]} 
+                color={color} 
+                lineWidth={2} 
+                dashed 
+                dashScale={2} 
+                gapSize={2}
+                opacity={0.3} 
+                transparent 
             />
-
-            {/* Interactive Invisible Hit Box (Thicker) */}
-             <Line 
-                points={points} 
-                color="transparent" 
-                lineWidth={20} 
-                opacity={0}
-                transparent
-            />
-
-            {/* Info Card on Hover */}
-            {hovered && (
-                <Html position={[
-                    (start[0] + end[0]) / 2,
-                    arcHeight + 2,
-                    (start[2] + end[2]) / 2
-                ]} center>
-                    <div className="bg-slate-900/95 backdrop-blur-md text-white p-3 rounded-lg shadow-2xl border border-slate-600 min-w-[180px] animate-fade-in pointer-events-none scale-75 origin-center">
-                        <div className="flex items-center gap-2 border-b border-slate-700 pb-2 mb-2">
-                            <div className="p-1.5 bg-slate-800 rounded-md">
-                                <Icon className="w-3 h-3 text-emerald-400" />
-                            </div>
-                            <div>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Flow Type</p>
-                                <p className="text-sm font-bold leading-none">{label}</p>
-                            </div>
-                        </div>
-                        <div className="space-y-1">
-                            <div className="flex justify-between text-xs">
-                                <span className="text-slate-400">Volume:</span>
-                                <span className="font-mono font-medium">{details.volume}</span>
-                            </div>
-                            <div className="flex justify-between text-xs">
-                                <span className="text-slate-400">Value:</span>
-                                <span className="font-mono font-medium text-emerald-400">{details.value}</span>
-                            </div>
-                        </div>
-                    </div>
+            <mesh position={point}>
+                <sphereGeometry args={[1, 8, 8]} />
+                <meshBasicMaterial color={color} toneMapped={false} />
+                <pointLight color={color} intensity={2} distance={20} />
+            </mesh>
+            {label && pct > 0.4 && pct < 0.6 && (
+                <Html position={point} center distanceFactor={150} zIndexRange={[100, 0]}>
+                     <div className="text-[10px] font-bold uppercase tracking-wider text-white bg-black/80 backdrop-blur px-2 py-1 rounded border border-white/10 whitespace-nowrap shadow-xl" style={{ borderLeft: `2px solid ${color}` }}>
+                        {label}
+                     </div>
                 </Html>
             )}
         </group>
     );
 };
 
-// --- HEXAGON BASE COMPONENT ---
-const HexBase = ({ position, color, label, radius = 24 }: { position: [number, number, number], color: string, label?: string, radius?: number }) => {
+// --- 2. FACILITY COMPONENTS (Strict Grid Alignment) ---
+
+// Plan 1: Center (0,0)
+const FacilityPlan1 = ({ selected, onSelect }: FacilityProps) => (
+    <group position={[0, 0, 0]} onClick={(e) => { e.stopPropagation(); onSelect(); }} onPointerOver={() => document.body.style.cursor = 'pointer'} onPointerOut={() => document.body.style.cursor = 'auto'}>
+        <ZonePlate size={[90, 90]} color="#064e3b" /> 
+        
+        {/* Central Hub */}
+        <mesh position={[0, 4, 0]} castShadow>
+             <boxGeometry args={[16, 8, 12]} />
+             <meshStandardMaterial color="#f1f5f9" />
+        </mesh>
+        
+        {/* Pivots - Static geometry, rotating subtle indicator */}
+        <PivotSystem position={[-30, 0, -30]} radius={15} active delay={0} />
+        <PivotSystem position={[30, 0, 30]} radius={15} active delay={2} />
+        <PivotSystem position={[-30, 0, 30]} radius={15} active delay={1} />
+        <PivotSystem position={[30, 0, -30]} radius={15} active delay={3} />
+
+        {!selected && <LabelTag label="Plan 1: Core Farm" sub="445 Ha Center" color="#10b981" position={[0, 18, 0]} />}
+        {selected && <InfoCard id="plan1" onClose={onSelect} />}
+    </group>
+);
+
+// Plan 2: Left (-ZONE_SPACING, 0)
+const FacilityPlan2 = ({ selected, onSelect }: FacilityProps) => (
+    <group position={[-ZONE_SPACING, 0, 0]} onClick={(e) => { e.stopPropagation(); onSelect(); }} onPointerOver={() => document.body.style.cursor = 'pointer'} onPointerOut={() => document.body.style.cursor = 'auto'}>
+        <ZonePlate size={[80, 100]} color="#14532d" />
+        
+        {/* Dairy Building */}
+        <mesh position={[-15, 4, 30]} castShadow>
+            <boxGeometry args={[20, 8, 12]} />
+            <meshStandardMaterial color="#78716c" roughness={0.9} />
+        </mesh>
+        
+        {/* Tree Rows */}
+        <TreeRows position={[10, 0, -10]} rows={6} length={70} spacing={10} />
+        
+        {!selected && <LabelTag label="Plan 2: Agroforestry" sub="Macs & Dairy" color="#16a34a" position={[0, 20, 0]} />}
+        {selected && <InfoCard id="plan2" onClose={onSelect} />}
+    </group>
+);
+
+// Plan 1A: Front Left (-ZONE_SPACING, ZONE_SPACING)
+const FacilityPlan1A = ({ selected, onSelect }: FacilityProps) => (
+    <group position={[-ZONE_SPACING, 0, ZONE_SPACING]} onClick={(e) => { e.stopPropagation(); onSelect(); }} onPointerOver={() => document.body.style.cursor = 'pointer'} onPointerOut={() => document.body.style.cursor = 'auto'}>
+        <ZonePlate size={[80, 80]} color="#713f12" />
+        
+        {/* Soybean Fields */}
+        <group position={[0, Y_MARKING, 0]}>
+            <mesh rotation={[-Math.PI/2, 0, 0]} receiveShadow>
+                <planeGeometry args={[70, 70]} />
+                <meshStandardMaterial color="#ca8a04" roughness={1} />
+            </mesh>
+            <gridHelper args={[70, 14, 0x422006, 0x422006]} position={[0, 0.1, 0]} />
+        </group>
+
+        {!selected && <LabelTag label="Plan 1A: Soy" sub="200 Ha Feedstock" color="#facc15" position={[0, 10, 0]} />}
+        {selected && <InfoCard id="plan1" onClose={onSelect} />}
+    </group>
+);
+
+// Plan 3: Right (ZONE_SPACING, 0)
+const FacilityPlan3 = ({ selected, onSelect }: FacilityProps) => (
+    <group position={[ZONE_SPACING, 0, 0]} onClick={(e) => { e.stopPropagation(); onSelect(); }} onPointerOver={() => document.body.style.cursor = 'pointer'} onPointerOut={() => document.body.style.cursor = 'auto'}>
+        <ZonePlate size={[80, 80]} color="#1e293b" />
+        
+        {/* Factory */}
+        <mesh position={[0, 6, 0]} castShadow>
+            <boxGeometry args={[30, 12, 50]} />
+            <meshStandardMaterial color="#94a3b8" metalness={0.5} />
+        </mesh>
+        {/* Glass Front */}
+        <mesh position={[0, 6, 25.1]}>
+            <planeGeometry args={[24, 8]} />
+            <meshStandardMaterial color="#38bdf8" metalness={0.8} roughness={0.1} />
+        </mesh>
+        
+        {!selected && <LabelTag label="Plan 3: Meat Factory" sub="Export Hub" color="#f59e0b" position={[0, 22, 0]} />}
+        {selected && <InfoCard id="plan3" onClose={onSelect} />}
+    </group>
+);
+
+// Plan 6: Front Right (ZONE_SPACING, ZONE_SPACING)
+const FacilityPlan6 = ({ selected, onSelect }: FacilityProps) => (
+    <group position={[ZONE_SPACING, 0, ZONE_SPACING]} onClick={(e) => { e.stopPropagation(); onSelect(); }} onPointerOver={() => document.body.style.cursor = 'pointer'} onPointerOut={() => document.body.style.cursor = 'auto'}>
+        <ZonePlate size={[80, 80]} color="#334155" />
+        
+        {/* Refinery Tanks */}
+        <group position={[-15, 0, -15]}>
+             <mesh position={[0, 8, 0]} castShadow>
+                <cylinderGeometry args={[8, 8, 16, 32]} />
+                <meshStandardMaterial color="#cbd5e1" metalness={0.7} />
+            </mesh>
+            <mesh position={[20, 8, 0]} castShadow>
+                <cylinderGeometry args={[8, 8, 16, 32]} />
+                <meshStandardMaterial color="#cbd5e1" metalness={0.7} />
+            </mesh>
+        </group>
+        
+        {/* Steam */}
+        <Cloud position={[20, 20, -20]} opacity={0.3} speed={0.1} width={10} segments={4} color="#ffffff" />
+
+        {!selected && <LabelTag label="Plan 6: Refinery" sub="Bio-Energy" color="#ef4444" position={[0, 25, 0]} />}
+        {selected && <InfoCard id="plan6" onClose={onSelect} />}
+    </group>
+);
+
+// Plan 3B: Back Right (ZONE_SPACING, -ZONE_SPACING)
+const FacilityPlan3B = ({ selected, onSelect }: FacilityProps) => (
+    <group position={[ZONE_SPACING, 0, -ZONE_SPACING]} onClick={(e) => { e.stopPropagation(); onSelect(); }} onPointerOver={() => document.body.style.cursor = 'pointer'} onPointerOut={() => document.body.style.cursor = 'auto'}>
+        <ZonePlate size={[70, 70]} color="#312e81" />
+        
+        {/* Domes */}
+        <mesh position={[-12, 4, 0]} castShadow>
+            <icosahedronGeometry args={[8, 1]} />
+            <meshStandardMaterial color="#e0e7ff" flatShading opacity={0.9} transparent />
+            <pointLight color="#a855f7" intensity={3} distance={15} />
+        </mesh>
+        <mesh position={[12, 4, 12]} castShadow>
+            <icosahedronGeometry args={[6, 1]} />
+            <meshStandardMaterial color="#e0e7ff" flatShading opacity={0.9} transparent />
+        </mesh>
+
+        {!selected && <LabelTag label="Plan 3B: Mushrooms" sub="Biotech Domes" color="#9333ea" position={[0, 15, 0]} />}
+        {selected && <InfoCard id="plan3b" onClose={onSelect} />}
+    </group>
+);
+
+// Plan 4: Far Back Center (0, -ZONE_SPACING)
+const FacilityPlan4 = ({ selected, onSelect }: FacilityProps) => (
+    <group position={[0, 0, -ZONE_SPACING]} onClick={(e) => { e.stopPropagation(); onSelect(); }} onPointerOver={() => document.body.style.cursor = 'pointer'} onPointerOut={() => document.body.style.cursor = 'auto'}>
+        <ZonePlate size={[60, 60]} color="#451a03" />
+        
+        {/* Hill/Cave */}
+        <mesh position={[0, 0, 0]} scale={[1, 0.5, 1]} castShadow>
+            <sphereGeometry args={[25, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.5]} />
+            <meshStandardMaterial color="#57534e" />
+        </mesh>
+        {/* Entrance */}
+        <mesh position={[0, 3, 20]}>
+            <boxGeometry args={[10, 8, 12]} />
+            <meshStandardMaterial color="#1c1917" />
+        </mesh>
+
+        {!selected && <LabelTag label="Plan 4: Cheese Caves" sub="Natural Aging" color="#eab308" position={[0, 18, 0]} />}
+        {selected && <InfoCard id="plan4" onClose={onSelect} />}
+    </group>
+);
+
+// Plan 5: Back Left (-ZONE_SPACING, -ZONE_SPACING)
+const FacilityPlan5 = ({ selected, onSelect }: FacilityProps) => (
+    <group position={[-ZONE_SPACING, 0, -ZONE_SPACING]} onClick={(e) => { e.stopPropagation(); onSelect(); }} onPointerOver={() => document.body.style.cursor = 'pointer'} onPointerOut={() => document.body.style.cursor = 'auto'}>
+        <ZonePlate size={[90, 90]} color="#0e7490" /> {/* Cyan-700 */}
+
+        {/* Solar Rows */}
+        <group position={[0, 2, 0]}>
+            {[-20, -5, 10, 25].map((z, i) => (
+                <mesh key={i} position={[0, 0, z]} rotation={[-Math.PI / 6, 0, 0]} castShadow>
+                    <boxGeometry args={[60, 0.5, 10]} />
+                    <meshStandardMaterial color="#1e293b" roughness={0.2} metalness={0.9} />
+                </mesh>
+            ))}
+        </group>
+
+        {/* Greenhouse / Tech Building */}
+        <group position={[25, 4, -20]}>
+             <mesh castShadow>
+                 <boxGeometry args={[15, 6, 20]} />
+                 <meshStandardMaterial color="#e2e8f0" transparent opacity={0.7} />
+             </mesh>
+             {/* Internal glow */}
+             <pointLight color="#06b6d4" intensity={2} distance={15} />
+        </group>
+
+        {!selected && <LabelTag label="Plan 5: Estate Solar" sub="4.9MW Microgrid" color="#06b6d4" position={[0, 15, 0]} />}
+        {selected && <InfoCard id="plan5" onClose={onSelect} />}
+    </group>
+);
+
+// --- 3. ANIMATED ELEMENTS ---
+
+const PivotSystem = ({ position, radius = 12, active = true, delay = 0 }: any) => {
+    const ref = useRef<THREE.Group>(null);
+    useFrame((state, delta) => {
+        if (ref.current && active) ref.current.rotation.y += delta * 0.2 * SPEED_FACTOR;
+    });
+
     return (
         <group position={position}>
-             {/* Tier 1: Foundation */}
-             <mesh receiveShadow rotation={[0, Math.PI/6, 0]} position={[0, 0.2, 0]}>
-                 <cylinderGeometry args={[radius, radius - 1, 0.4, 6]} />
-                 <meshStandardMaterial color="#e2e8f0" />
-             </mesh>
-             
-             {/* Tier 2: Platform Surface */}
-             <mesh receiveShadow rotation={[0, Math.PI/6, 0]} position={[0, 0.5, 0]}>
-                 <cylinderGeometry args={[radius - 1, radius - 1, 0.2, 6]} />
-                 <meshStandardMaterial color="#f8fafc" />
-             </mesh>
-
-             {/* Tier 3: Colored Rim/Glow */}
-             <mesh rotation={[0, Math.PI/6, 0]} position={[0, 0.55, 0]}>
-                 <ringGeometry args={[radius - 1.5, radius - 1, 6]} />
-                 <meshBasicMaterial color={color} transparent opacity={0.4} side={THREE.DoubleSide} />
-             </mesh>
-
-             {/* Outline for definition */}
-              <mesh rotation={[Math.PI/2, 0, 0]} position={[0, 0.6, 0]}>
-                  <ringGeometry args={[radius - 1.1, radius - 1, 6]} />
-                  <meshBasicMaterial color={color} />
-              </mesh>
-
-             {label && (
-                 <Html position={[0, 4, radius + 2]} center>
-                     <div className="flex flex-col items-center">
-                        <div className={`w-1 h-8 bg-${color.replace('#','')} opacity-50 mb-1`}></div>
-                        <div className={`text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-white/90 px-3 py-1 rounded-full shadow-sm border border-slate-200 whitespace-nowrap backdrop-blur-sm`}>
-                            {label}
-                        </div>
-                     </div>
-                 </Html>
-             )}
-        </group>
-    )
-}
-
-// --- GROUND CONNECTION COMPONENT ---
-const ConnectionPath = ({ start, end, type = 'road' }: { start: [number, number, number], end: [number, number, number], type?: 'road' | 'pipe' }) => {
-    const points = useMemo(() => [new THREE.Vector3(...start), new THREE.Vector3(...end)], [start, end]);
-    const color = type === 'road' ? '#e2e8f0' : '#94a3b8';
-    const width = type === 'road' ? 8 : 2;
-    const height = type === 'road' ? 0.6 : 0.8;
-
-    return (
-        <group>
-             {/* Physical "Road" or "Pipe" */}
-            <Line points={points} color={color} lineWidth={width} position={[0, height, 0]} transparent opacity={0.6} />
-            {/* Center divider detail */}
-            {type === 'road' && <Line points={points} color="#cbd5e1" lineWidth={1} position={[0, height + 0.05, 0]} dashed dashSize={2} gapSize={2} />}
-        </group>
-    )
-}
-
-// --- SPECIAL PLAN 2: AGROFORESTRY EVOLUTION SCENE ---
-
-const AgroforestryEvolutionScene = ({ year }: { year: number }) => {
-    // Logic based on year
-    const treeScale = 0.3 + (year * 0.25); // Year 1: 0.55, Year 7: ~2.0
-    const canopySize = 0.5 + (year * 0.5);
-    const treeHeight = 1 + (year * 0.8);
-    
-    const soyDensity = year <= 3 ? 1 : (year <= 5 ? 0.4 : 0);
-    
-    const rowSpacing = 8;
-    const treeSpacing = 6;
-    const numRows = 5;
-    const treesPerRow = 8;
-
-    const treePositions = useMemo(() => {
-        const pos = [];
-        for (let r = 0; r < numRows; r++) {
-            for (let t = 0; t < treesPerRow; t++) {
-                pos.push({
-                    position: [(r * rowSpacing) - (numRows * rowSpacing / 2) + 4, 0, (t * treeSpacing) - (treesPerRow * treeSpacing / 2) + 3],
-                    rotation: Math.random() * Math.PI
-                });
-            }
-        }
-        return pos;
-    }, []);
-
-    const soyPositions = useMemo(() => {
-        const pos = [];
-        // Create rows of soy between tree rows
-        for (let r = 0; r < numRows - 1; r++) {
-            // 3 lines of soy between trees
-            for(let line = 1; line <= 3; line++) {
-                const offset = (rowSpacing / 4) * line;
-                for (let s = 0; s < 30; s++) {
-                    // Jitter position
-                    const jitterX = (Math.random() - 0.5) * 0.5;
-                    const jitterZ = (Math.random() - 0.5) * 0.5;
-                    pos.push([
-                        (r * rowSpacing) - (numRows * rowSpacing / 2) + 4 + offset + jitterX,
-                        0,
-                        (s * 1.5) - 22 + jitterZ
-                    ]);
-                }
-            }
-        }
-        // Shuffle for uniform density reduction
-        for (let i = pos.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [pos[i], pos[j]] = [pos[j], pos[i]];
-        }
-        return pos;
-    }, []);
-
-    return (
-        <group>
-             <ambientLight intensity={0.6} />
-             <directionalLight position={[10, 20, 10]} intensity={1.5} castShadow />
-             
-             {/* Ground */}
-             <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]} receiveShadow>
-                 <planeGeometry args={[100, 100]} />
-                 <meshStandardMaterial color="#f0fdf4" />
-             </mesh>
-             
-             {/* Trees */}
-             {treePositions.map((t, i) => (
-                 <group key={i} position={t.position as any} rotation={[0, t.rotation, 0]}>
-                     {/* Trunk */}
-                     <mesh position={[0, treeHeight/2, 0]} castShadow>
-                         <cylinderGeometry args={[0.2 * treeScale, 0.3 * treeScale, treeHeight, 8]} />
-                         <meshStandardMaterial color="#78350f" />
-                     </mesh>
-                     {/* Canopy */}
-                     <mesh position={[0, treeHeight, 0]} castShadow>
-                         <dodecahedronGeometry args={[canopySize, 0]} />
-                         <meshStandardMaterial color="#16a34a" />
-                     </mesh>
-                 </group>
-             ))}
-
-             {/* Soybeans */}
-             {soyDensity > 0 && (
-                 <Instances range={Math.floor(soyPositions.length * soyDensity)}>
-                     <coneGeometry args={[0.3, 0.6, 5]} />
-                     <meshStandardMaterial color="#84cc16" />
-                     {soyPositions.map((pos, i) => (
-                         <Instance key={i} position={pos as any} />
-                     ))}
-                 </Instances>
-             )}
-             
-             {/* Labels */}
-             <LabelCard position={[0, 12, 0]} text={`Year ${year}`} subtext={year >= 7 ? 'Canopy Closure' : 'Growth Phase'} color="slate" />
-        </group>
-    )
-};
-
-// --- MASTER SCENE COMPONENT ---
-const MasterScene = ({ onSelect, selectedId }: { onSelect: (id: string | null) => void, selectedId: string | null }) => {
-    // Organized Hexagonal Grid Layout
-    // Radius 50 ensures good spacing between centers.
-    const R = 55;
-    const POS = {
-        P1: [0, 0, 0] as [number, number, number],              // CENTER: Farm/Hub
-        P2: [0, 0, -R] as [number, number, number],             // NORTH: Orchard (Large area)
-        P4: [R * 0.866, 0, -R * 0.5] as [number, number, number], // NORTH-EAST: Cheese (Near Orchard)
-        P3: [R * 0.866, 0, R * 0.5] as [number, number, number],  // SOUTH-EAST: Meat (Near Farm Inputs)
-        P3B: [0, 0, R] as [number, number, number],             // SOUTH: Mushrooms (Near Farm Waste)
-        P6: [-R * 0.866, 0, R * 0.5] as [number, number, number], // SOUTH-WEST: Energy (Industrial Zone)
-        P5: [-R * 0.866, 0, -R * 0.5] as [number, number, number] // NORTH-WEST: Pharma (High Tech Zone)
-    };
-
-    // Ring Road Path (connecting outer nodes)
-    const ringPoints = [
-        new THREE.Vector3(...POS.P2),
-        new THREE.Vector3(...POS.P4),
-        new THREE.Vector3(...POS.P3),
-        new THREE.Vector3(...POS.P3B),
-        new THREE.Vector3(...POS.P6),
-        new THREE.Vector3(...POS.P5),
-        new THREE.Vector3(...POS.P2) // Close loop
-    ];
-    const ringCurve = new THREE.CatmullRomCurve3(ringPoints, true, 'catmullrom', 0.1); // Low tension for straight lines
-    const ringGeometry = new THREE.TubeGeometry(ringCurve, 64, 0.5, 8, true);
-
-    return (
-        <group onPointerMissed={() => onSelect(null)}>
-             <ambientLight intensity={0.8} />
-             <directionalLight position={[50, 80, 40]} intensity={1.5} castShadow shadow-mapSize={[2048, 2048]} />
-             
-             {/* Large Ground Plane with Subtle Grid */}
-             <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.2, 0]} receiveShadow>
-                <planeGeometry args={[400, 400]} />
-                <meshStandardMaterial color="#f1f5f9" />
-             </mesh>
-             <gridHelper args={[400, 60, '#cbd5e1', '#f1f5f9']} position={[0, -0.1, 0]} />
-
-             {/* --- INFRASTRUCTURE RINGS --- */}
-             <mesh geometry={ringGeometry} position={[0, 0.5, 0]}>
-                <meshStandardMaterial color="#94a3b8" transparent opacity={0.3} />
-             </mesh>
-
-             {/* --- INFRASTRUCTURE SPOKES --- */}
-             <ConnectionPath start={POS.P1} end={POS.P2} type="road" />
-             <ConnectionPath start={POS.P1} end={POS.P3} type="road" />
-             <ConnectionPath start={POS.P1} end={POS.P4} type="road" />
-             <ConnectionPath start={POS.P1} end={POS.P5} type="road" />
-             <ConnectionPath start={POS.P1} end={POS.P6} type="road" />
-             <ConnectionPath start={POS.P1} end={POS.P3B} type="road" />
-             
-             {/* Inter-nodal connections (Pipes) */}
-             <ConnectionPath start={POS.P2} end={POS.P4} type="pipe" /> {/* Milk to Cheese */}
-             <ConnectionPath start={POS.P6} end={POS.P5} type="pipe" /> {/* Power/Heat to Pharma */}
-
-             {/* --- PLAN 1: THE HUB (Center) --- */}
-             <group position={POS.P1}>
-                <HexBase position={[0,0,0]} color="#10b981" label="Plan 1: Hub" radius={26} />
-                <LabelCard position={[0, 14, 0]} text="Core Farm" subtext="Plan 1" color="emerald" />
-                
-                {/* Hub Building */}
-                <Building id="p1_packhouse" position={[0, 0, 0]} args={[16, 6, 20]} color="#f8fafc" onSelect={onSelect} isSelected={selectedId === 'p1_packhouse'} />
-                <mesh position={[0, 3.1, 0]}>
-                    <boxGeometry args={[14, 0.5, 18]} />
+            <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, Y_MARKING, 0]}>
+                <circleGeometry args={[radius, 32]} />
+                <meshStandardMaterial color="#15803d" />
+            </mesh>
+            <group ref={ref} rotation={[0, delay, 0]} position={[0, Y_MARKING + 0.5, 0]}>
+                <mesh position={[radius/2, 0.5, 0]}>
+                    <boxGeometry args={[radius, 0.2, 0.2]} />
                     <meshStandardMaterial color="#cbd5e1" />
                 </mesh>
-
-                {/* Solar Array on Hub */}
-                <group position={[14, 0, 0]}>
-                    <Building id="p1_solar" position={[0, 0, 0]} args={[10, 0.5, 18]} color="#1e293b" onSelect={onSelect} isSelected={selectedId === 'p1_solar'} label="Solar" />
-                </group>
-
-                {/* Water Hub */}
-                <Tank id="p1_water" position={[-14, 0, 5]} height={4} radius={4} color="#0ea5e9" onSelect={onSelect} isSelected={selectedId === 'p1_water'} label="Water" />
-                <Tank id="p1_water" position={[-14, 0, -5]} height={4} radius={4} color="#0ea5e9" onSelect={onSelect} isSelected={selectedId === 'p1_water'} />
-             </group>
-
-             {/* --- PLAN 2: AGROFORESTRY (North) --- */}
-             <group position={POS.P2}>
-                 <HexBase position={[0,0,0]} color="#16a34a" label="Plan 2: Orchard" />
-                 <LabelCard position={[0, 10, 0]} text="Agroforestry" subtext="Plan 2" color="green" />
-                 
-                 {/* INTERACTIVE ORCHARD ZONE (Invisible Hit Box) */}
-                 <Building 
-                    id="p2_orchard" 
-                    position={[0, 2, 0]} 
-                    args={[40, 4, 40]} 
-                    color="#16a34a" 
-                    opacity={0} 
-                    onSelect={onSelect} 
-                    isSelected={selectedId === 'p2_orchard'} 
-                 />
-
-                 {/* Hexagonal Orchard Layout (Visuals) */}
-                 {Array.from({length: 7}).map((_, i) => {
-                     const angle = (i / 6) * Math.PI * 2;
-                     const r = i === 0 ? 0 : 12;
-                     const x = Math.cos(angle) * r;
-                     const z = Math.sin(angle) * r;
-                     return (
-                         <group key={i} position={[x, 0, z]} className="pointer-events-none">
-                            <mesh position={[0, 1, 0]}>
-                                <cylinderGeometry args={[0.3, 0.4, 2, 6]} />
-                                <meshStandardMaterial color="#78350f" />
-                            </mesh>
-                            <mesh position={[0, 3, 0]}>
-                                <dodecahedronGeometry args={[2.5, 0]} />
-                                <meshStandardMaterial color={selectedId === 'p2_orchard' ? '#22c55e' : '#16a34a'} />
-                            </mesh>
-                         </group>
-                     )
-                 })}
-             </group>
-
-             {/* --- PLAN 4: CHEESE (North East) --- */}
-             <group position={POS.P4}>
-                <HexBase position={[0,0,0]} color="#eab308" label="Plan 4: Cheese" />
-                <LabelCard position={[0, 10, 0]} text="Cheese" subtext="Plan 4" color="yellow" />
-                <Building id="p4_cave" position={[0, 0, -5]} args={[20, 4, 14]} color="#fcd34d" onSelect={onSelect} isSelected={selectedId === 'p4_cave'} />
-                {/* Apiary Boxes */}
-                <group position={[-5, 0, 10]}>
-                    {Array.from({length: 6}).map((_, i) => (
-                        <mesh key={i} position={[(i%3)*3 - 3, 0.5, Math.floor(i/3)*3]}>
-                            <boxGeometry args={[1.5, 1, 1.5]} />
-                            <meshStandardMaterial color="#d97706" />
-                        </mesh>
-                    ))}
-                </group>
-             </group>
-
-             {/* --- PLAN 3: MEAT (South East) --- */}
-             <group position={POS.P3}>
-                 <HexBase position={[0,0,0]} color="#f59e0b" label="Plan 3: Meat" />
-                 <LabelCard position={[0, 12, 0]} text="Plant Meat" subtext="Plan 3" color="amber" />
-                 <Building id="p3_factory" position={[0, 0, 0]} args={[18, 7, 24]} color="#e2e8f0" onSelect={onSelect} isSelected={selectedId === 'p3_factory'} />
-                 <Tank id="p3_factory" position={[-12, 0, 5]} height={8} radius={2.5} color="#fbbf24" onSelect={onSelect} isSelected={selectedId === 'p3_factory'} />
-                 <Building id="p3_factory" position={[12, 0, -5]} args={[6, 8, 6]} color="#b45309" onSelect={onSelect} isSelected={selectedId === 'p3_factory'} />
-             </group>
-             
-             {/* --- PLAN 3B: MUSHROOMS (South) --- */}
-             <group position={POS.P3B}>
-                 <HexBase position={[0,0,0]} color="#a855f7" label="Plan 3B: Fungi" />
-                 <LabelCard position={[0, 8, 0]} text="Mushrooms" subtext="Plan 3B" color="purple" />
-                 {/* Container Stack */}
-                 <group position={[0, 0, 0]}>
-                     <Building id="p3b_cluster" position={[-6, 0, 0]} args={[4, 3, 12]} color="#d8b4fe" onSelect={onSelect} isSelected={selectedId === 'p3b_cluster'} />
-                     <Building id="p3b_cluster" position={[0, 0, 0]} args={[4, 3, 12]} color="#d8b4fe" onSelect={onSelect} isSelected={selectedId === 'p3b_cluster'} />
-                     <Building id="p3b_cluster" position={[6, 0, 0]} args={[4, 3, 12]} color="#d8b4fe" onSelect={onSelect} isSelected={selectedId === 'p3b_cluster'} />
-                     <Building id="p3b_cluster" position={[-3, 3, 0]} args={[4, 3, 12]} color="#c084fc" onSelect={onSelect} isSelected={selectedId === 'p3b_cluster'} />
-                     <Building id="p3b_cluster" position={[3, 3, 0]} args={[4, 3, 12]} color="#c084fc" onSelect={onSelect} isSelected={selectedId === 'p3b_cluster'} />
-                 </group>
-             </group>
-
-             {/* --- PLAN 6: ENERGY (South West) --- */}
-             <group position={POS.P6}>
-                <HexBase position={[0,0,0]} color="#10b981" label="Plan 6: Energy" />
-                <LabelCard position={[0, 14, 0]} text="Bio-Energy" subtext="Plan 6" color="emerald" />
-                <Building id="p6_reactor" position={[0, 0, -6]} args={[12, 10, 12]} color="#334155" onSelect={onSelect} isSelected={selectedId === 'p6_reactor'} />
-                <group position={[8, 0, 6]}>
-                    <Tank id="p6_reactor" position={[-3, 0, 0]} height={6} radius={2.5} color="#cbd5e1" onSelect={onSelect} isSelected={selectedId === 'p6_reactor'} />
-                    <Tank id="p6_reactor" position={[3, 0, 0]} height={6} radius={2.5} color="#cbd5e1" onSelect={onSelect} isSelected={selectedId === 'p6_reactor'} />
-                </group>
-                <Pile id="p6_reactor" position={[-10, 1, 5]} color="#d97706" onSelect={onSelect} isSelected={selectedId === 'p6_reactor'} />
-             </group>
-
-             {/* --- PLAN 5: PHARMA (North West) --- */}
-             <group position={POS.P5}>
-                 <HexBase position={[0,0,0]} color="#06b6d4" label="Plan 5: Pharma" />
-                 <LabelCard position={[0, 10, 0]} text="Pharma" subtext="Plan 5" color="cyan" />
-                 {/* Greenhouse structure */}
-                 <Building id="p5_greenhouse" position={[0, 0, 0]} args={[24, 5, 18]} color="#a7f3d0" opacity={0.7} onSelect={onSelect} isSelected={selectedId === 'p5_greenhouse'} />
-                 {/* Internal frame hint */}
-                 <mesh position={[0, 2.5, 0]}>
-                     <boxGeometry args={[23, 4.8, 17]} />
-                     <meshBasicMaterial color="#ecfdf5" wireframe />
-                 </mesh>
-             </group>
-
-
-             {/* --- SYSTEMIC FLOW LINES (Curved Data Flows) --- */}
-             
-             {/* 1. SOY FLOW: Farm (P1) -> Meat (P3) */}
-             <FlowLine 
-                start={[POS.P1[0], 6, POS.P1[2]]} 
-                end={[POS.P3[0], 8, POS.P3[2]]} 
-                color="#16a34a" 
-                label="Soy Feedstock" 
-                details={{ volume: "150 T/Year", value: "R 1.5M Saved", icon: Sprout }} 
-                arcHeight={25}
-             />
-
-             {/* 2. WASTE FLOW: Orchard (P2) -> Energy (P6) */}
-             <FlowLine 
-                start={[POS.P2[0], 6, POS.P2[2]]} 
-                end={[POS.P6[0], 12, POS.P6[2]]} 
-                color="#854d0e" 
-                label="Biomass" 
-                details={{ volume: "145 T/Year", value: "Zero Cost", icon: Recycle }} 
-                arcHeight={40}
-             />
-
-             {/* 3. WASTE FLOW: Orchard (P2) -> Mushrooms (P3B) */}
-             <FlowLine 
-                start={[POS.P2[0], 6, POS.P2[2]]} 
-                end={[POS.P3B[0], 6, POS.P3B[2]]} 
-                color="#a16207" 
-                label="Prunings" 
-                details={{ volume: "250 T/Year", value: "Substrate", icon: Recycle }} 
-                arcHeight={35}
-             />
-
-             {/* 4. ENERGY FLOW: Energy (P6) -> Pharma (P5) */}
-             <FlowLine 
-                start={[POS.P6[0], 12, POS.P6[2]]} 
-                end={[POS.P5[0], 6, POS.P5[2]]} 
-                color="#fbbf24" 
-                label="Backup Power" 
-                details={{ volume: "100% Off-Grid", value: "Crit. Uptime", icon: Zap }} 
-                arcHeight={25}
-             />
-
-             {/* 5. INPUT FLOW: Orchard (P2) -> Cheese (P4) */}
-             <FlowLine 
-                start={[POS.P2[0], 6, POS.P2[2]]} 
-                end={[POS.P4[0], 6, POS.P4[2]]} 
-                color="#22c55e" 
-                label="Macadamias" 
-                details={{ volume: "145 T/Year", value: "@ R3/kg Cost", icon: Truck }} 
-                arcHeight={20}
-             />
-
-             {/* 6. ECO SERVICE: Bees (P4) -> Orchard (P2) */}
-             <FlowLine 
-                start={[POS.P4[0], 4, POS.P4[2]]} 
-                end={[POS.P2[0], 4, POS.P2[2]]} 
-                color="#f472b6" 
-                label="Pollination" 
-                details={{ volume: "+40% Yield", value: "R 14.0M Val", icon: Wind }} 
-                arcHeight={15}
-             />
-
-             {/* 7. REGENERATION: Energy (P6) -> Farm (P1) */}
-             <FlowLine 
-                start={[POS.P6[0], 6, POS.P6[2]]} 
-                end={[POS.P1[0], 6, POS.P1[2]]} 
-                color="#334155" 
-                label="Biochar" 
-                details={{ volume: "3,000 T/Year", value: "Soil Health", icon: Sprout }} 
-                arcHeight={20}
-             />
-
-             {/* 8. WATER: Hub (P1) -> Orchard (P2) */}
-             <FlowLine 
-                start={[POS.P1[0], 4, POS.P1[2]]} 
-                end={[POS.P2[0], 4, POS.P2[2]]} 
-                color="#0ea5e9" 
-                label="Water" 
-                details={{ volume: "Irrigation", value: "Shared Res", icon: Droplets }} 
-                arcHeight={15}
-             />
-
-        </group>
-    )
-}
-
-
-const Scene = ({ selectedId, onSelect, projectId, viewMode, timelineYear }: { selectedId: string | null, onSelect: (id: string | null) => void, projectId: string, viewMode: 'layout' | 'evolution', timelineYear: number }) => {
-    
-    // --- MASTER SCENE ---
-    if (projectId === 'master') {
-        return <MasterScene onSelect={onSelect} selectedId={selectedId} />;
-    }
-
-    // --- PLAN 5 SCENE (Greenhouse) ---
-    if (projectId === 'plan5') {
-         return (
-             <group onPointerMissed={() => onSelect(null)}>
-                <ambientLight intensity={0.8} />
-                <directionalLight position={[50, 50, 25]} intensity={1.2} castShadow shadow-mapSize={[1024, 1024]}>
-                    <orthographicCamera attach="shadow-camera" args={[-50, 50, -50, 50, 0.1, 200]} />
-                </directionalLight>
-
-                {/* Ground */}
-                <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]} receiveShadow>
-                    <planeGeometry args={[100, 100]} />
-                    <meshStandardMaterial color="#f0fdf4" />
-                </mesh>
-
-                {/* Solar Array (Large flat area) */}
-                 <Building 
-                    id="solar"
-                    position={[-20, 0, 0]} 
-                    args={[20, 0.5, 40]} 
-                    color="#1e293b" 
-                    label="Solar Array"
-                    subtext="4.5 MW"
-                    onSelect={onSelect}
-                    isSelected={selectedId === 'solar'} 
-                />
-
-                {/* Greenhouse (Transparent-ish) */}
-                <Building 
-                    id="greenhouse"
-                    position={[10, 0, -10]} 
-                    args={[30, 6, 20]} 
-                    color="#a7f3d0" 
-                    opacity={0.6}
-                    label="Greenhouse"
-                    subtext="10,240m²"
-                    onSelect={onSelect}
-                    isSelected={selectedId === 'greenhouse'} 
-                />
-
-                 {/* Processing Building */}
-                <Building 
-                    id="processing"
-                    position={[10, 0, 15]} 
-                    args={[20, 8, 15]} 
-                    color="#f8fafc" 
-                    label="Pharma Plant"
-                    subtext="GMP Facility"
-                    onSelect={onSelect}
-                    isSelected={selectedId === 'processing'} 
-                />
-
-                {/* Water Tanks */}
-                 <Tank id="water" position={[25, 0, 15]} height={6} radius={2} color="#38bdf8" onSelect={onSelect} isSelected={selectedId === 'water'} label="H2O" />
-
-                {/* Indicator */}
-                {selectedId && facilityDataPlan5[selectedId] && (
-                    <SelectionIndicator targetPosition={
-                        selectedId === 'solar' ? [-20, 0, 0] :
-                        selectedId === 'greenhouse' ? [10, 0, -10] :
-                        selectedId === 'processing' ? [10, 0, 15] :
-                        [25, 0, 15]
-                    } targetHeight={facilityDataPlan5[selectedId].height || 5} />
+                {active && (
+                     <Sparkles position={[radius/2, 0, 0]} scale={[radius, 1, 1]} count={5} speed={0.2} color="#a5f3fc" />
                 )}
-             </group>
-         )
-    }
-
-    // --- PLAN 3B SCENE (Medicinal Mushrooms) ---
-    if (projectId === 'plan3b') {
-        return (
-            <group onPointerMissed={() => onSelect(null)}>
-               <ambientLight intensity={0.8} />
-               <directionalLight position={[50, 50, 25]} intensity={1.2} castShadow shadow-mapSize={[1024, 1024]}>
-                   <orthographicCamera attach="shadow-camera" args={[-50, 50, -50, 50, 0.1, 200]} />
-               </directionalLight>
-
-               <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]} receiveShadow>
-                   <planeGeometry args={[100, 100]} />
-                   <meshStandardMaterial color="#f3e8ff" />
-               </mesh>
-
-               {/* Substrate Building */}
-               <Building 
-                   id="substrate"
-                   position={[-25, 0, 0]} 
-                   args={[20, 6, 30]} 
-                   color="#e2e8f0" 
-                   label="Substrate Prep"
-                   subtext="Sterilization"
-                   onSelect={onSelect}
-                   isSelected={selectedId === 'substrate'} 
-               />
-
-               {/* Containers (Grid of 4x4 = 16) */}
-               <group position={[10, 0, 0]}>
-                   <Instances range={16}>
-                       <boxGeometry args={[4, 3, 12]} />
-                       <meshStandardMaterial color="#d8b4fe" />
-                       {Array.from({length: 4}).map((_, row) => (
-                           Array.from({length: 4}).map((_, col) => (
-                               <Instance 
-                                   key={`${row}-${col}`} 
-                                   position={[row * 6 - 10, 1.5, col * 14 - 20]} 
-                                   onClick={(e) => { e.stopPropagation(); onSelect('containers'); }}
-                                   color={selectedId === 'containers' ? '#10b981' : '#d8b4fe'}
-                               />
-                           ))
-                       ))}
-                   </Instances>
-                   <LabelCard position={[0, 5, 0]} text="Smart Containers" subtext="16 Units" color="purple" />
-               </group>
-
-               {/* Processing/Cleanroom */}
-               <Building 
-                   id="lab"
-                   position={[-20, 0, 25]} 
-                   args={[20, 4, 15]} 
-                   color="#ffffff" 
-                   label="Cleanroom Lab"
-                   subtext="ISO 5"
-                   onSelect={onSelect}
-                   isSelected={selectedId === 'lab'} 
-               />
-               
-               <Building 
-                   id="processing"
-                   position={[-5, 0, 25]} 
-                   args={[10, 5, 15]} 
-                   color="#f5d0fe" 
-                   label="Processing"
-                   subtext="Encapsulation"
-                   onSelect={onSelect}
-                   isSelected={selectedId === 'processing'} 
-               />
-
-               {/* Solar */}
-               <Building 
-                   id="solar"
-                   position={[30, 0, 0]} 
-                   args={[10, 0.5, 40]} 
-                   color="#1e293b" 
-                   label="Solar"
-                   subtext="50kW"
-                   onSelect={onSelect}
-                   isSelected={selectedId === 'solar'} 
-               />
-
-               {selectedId && facilityDataPlan3b[selectedId] && (
-                   <SelectionIndicator targetPosition={
-                       selectedId === 'substrate' ? [-25, 0, 0] :
-                       selectedId === 'lab' ? [-20, 0, 25] :
-                       selectedId === 'processing' ? [-5, 0, 25] :
-                       selectedId === 'solar' ? [30, 0, 0] :
-                       [10, 0, 0]
-                   } targetHeight={facilityDataPlan3b[selectedId].height || 5} />
-               )}
             </group>
-        )
-    }
-
-    // --- PLAN 4 SCENE (Cheese & Bees) ---
-    if (projectId === 'plan4') {
-        return (
-            <group onPointerMissed={() => onSelect(null)}>
-                <ambientLight intensity={0.8} />
-                <directionalLight position={[50, 50, 25]} intensity={1.2} castShadow shadow-mapSize={[1024, 1024]}>
-                    <orthographicCamera attach="shadow-camera" args={[-50, 50, -50, 50, 0.1, 200]} />
-                </directionalLight>
-
-                <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]} receiveShadow>
-                    <planeGeometry args={[100, 100]} />
-                    <meshStandardMaterial color="#fefce8" />
-                </mesh>
-
-                {/* Main Creamery */}
-                <Building 
-                    id="factory"
-                    position={[0, 0, 5]} 
-                    args={[25, 6, 20]} 
-                    color="#fef3c7" 
-                    label="Creamery"
-                    subtext="Processing"
-                    onSelect={onSelect}
-                    isSelected={selectedId === 'factory'} 
-                />
-
-                {/* Ageing Caves (Partially buried look) */}
-                <Building 
-                    id="cave"
-                    position={[15, 0, -10]} 
-                    args={[30, 4, 15]} 
-                    color="#78716c" 
-                    label="Ageing Caves"
-                    subtext="Maturation"
-                    onSelect={onSelect}
-                    isSelected={selectedId === 'cave'} 
-                />
-
-                {/* Apiary (Bee Hives) */}
-                <group position={[-20, 0, 0]}>
-                     <Building 
-                        id="apiary"
-                        position={[0, 0, 0]} 
-                        args={[10, 1, 30]} 
-                        color="#f59e0b" 
-                        label="Flow Hives"
-                        subtext="Pollination"
-                        onSelect={onSelect}
-                        isSelected={selectedId === 'apiary'} 
-                    />
-                    {/* Small boxes for hives */}
-                     <Instances range={20}>
-                         <boxGeometry args={[1, 1, 1]} />
-                         <meshStandardMaterial color="#d97706" />
-                         {Array.from({length: 20}).map((_, i) => (
-                             <Instance key={i} position={[Math.sin(i)*3, 1, (i*1.2)-10]} />
-                         ))}
-                     </Instances>
-                </group>
-
-                {/* Solar */}
-                 <Building 
-                    id="solar"
-                    position={[15, 0, 15]} 
-                    args={[20, 0.5, 10]} 
-                    color="#1e293b" 
-                    label="Solar"
-                    subtext="300kW"
-                    onSelect={onSelect}
-                    isSelected={selectedId === 'solar'} 
-                />
-
-                {/* Biodigester */}
-                <Tank id="biodigester" position={[-10, 0, -15]} height={5} radius={3} color="#713f12" onSelect={onSelect} isSelected={selectedId === 'biodigester'} label="Biogas" subtext="Waste-to-Energy" />
-
-                {selectedId && facilityDataPlan4[selectedId] && (
-                   <SelectionIndicator targetPosition={
-                       selectedId === 'factory' ? [0, 0, 5] :
-                       selectedId === 'cave' ? [15, 0, -10] :
-                       selectedId === 'apiary' ? [-20, 0, 0] :
-                       selectedId === 'solar' ? [15, 0, 15] :
-                       [-10, 0, -15]
-                   } targetHeight={facilityDataPlan4[selectedId].height || 5} />
-               )}
-
-            </group>
-        )
-    }
-
-    // --- PLAN 3 SCENE (Meat Factory) ---
-    if (projectId === 'plan3') {
-        return (
-            <group onPointerMissed={() => onSelect(null)}>
-               <ambientLight intensity={0.8} />
-               <directionalLight position={[50, 50, 25]} intensity={1.2} castShadow shadow-mapSize={[1024, 1024]}>
-                   <orthographicCamera attach="shadow-camera" args={[-50, 50, -50, 50, 0.1, 200]} />
-               </directionalLight>
-
-               <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]} receiveShadow>
-                   <planeGeometry args={[100, 100]} />
-                   <meshStandardMaterial color="#f0fdf4" />
-               </mesh>
-
-               <Building 
-                   id="production"
-                   position={[0, 0, -10]} 
-                   args={[30, 8, 20]} 
-                   color="#e2e8f0" 
-                   label="Production Hall"
-                   subtext="Manufacturing"
-                   onSelect={onSelect}
-                   isSelected={selectedId === 'production'} 
-               />
-
-               <Building 
-                   id="smokehouse"
-                   position={[-20, 0, -5]} 
-                   args={[10, 6, 10]} 
-                   color="#b45309" 
-                   label="Smokehouse"
-                   subtext="Curing"
-                   onSelect={onSelect}
-                   isSelected={selectedId === 'smokehouse'} 
-               />
-
-               <Building 
-                   id="retort"
-                   position={[20, 0, -5]} 
-                   args={[10, 7, 10]} 
-                   color="#475569" 
-                   label="Retort"
-                   subtext="Sterilization"
-                   onSelect={onSelect}
-                   isSelected={selectedId === 'retort'} 
-               />
-
-                <Tank id="yeast" position={[-20, 0, 10]} height={9} radius={3} color="#fbbf24" onSelect={onSelect} isSelected={selectedId === 'yeast'} label="Yeast" subtext="Biotech" />
-                <Tank id="yeast" position={[-12, 0, 10]} height={9} radius={3} color="#fbbf24" onSelect={onSelect} isSelected={selectedId === 'yeast'} />
-
-               <Building 
-                   id="logistics"
-                   position={[10, 0, 15]} 
-                   args={[25, 6, 15]} 
-                   color="#94a3b8" 
-                   label="Dispatch"
-                   subtext="Warehousing"
-                   onSelect={onSelect}
-                   isSelected={selectedId === 'logistics'} 
-               />
-
-               {selectedId && facilityDataPlan3[selectedId] && (
-                   <SelectionIndicator targetPosition={
-                       selectedId === 'production' ? [0, 0, -10] :
-                       selectedId === 'smokehouse' ? [-20, 0, -5] :
-                       selectedId === 'retort' ? [20, 0, -5] :
-                       selectedId === 'yeast' ? [-20, 0, 10] :
-                       [10, 0, 15]
-                   } targetHeight={facilityDataPlan3[selectedId].height || 5} />
-               )}
-            </group>
-        )
-    }
-
-    // --- PLAN 1 SCENE (Farm) ---
-    if (projectId === 'plan1') {
-        return (
-            <group onPointerMissed={() => onSelect(null)}>
-               <ambientLight intensity={0.8} />
-               <directionalLight position={[50, 50, 25]} intensity={1.2} castShadow shadow-mapSize={[1024, 1024]}>
-                   <orthographicCamera attach="shadow-camera" args={[-50, 50, -50, 50, 0.1, 200]} />
-               </directionalLight>
-
-               <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]} receiveShadow>
-                   <planeGeometry args={[100, 100]} />
-                   <meshStandardMaterial color="#ecfccb" />
-               </mesh>
-
-               {/* Solar Array */}
-               <Building 
-                   id="solar"
-                   position={[-25, 0, -25]} 
-                   args={[30, 0.5, 20]} 
-                   color="#1e293b" 
-                   label="500kVA Solar"
-                   subtext="Energy"
-                   onSelect={onSelect}
-                   isSelected={selectedId === 'solar'} 
-               />
-
-               {/* Packhouse */}
-               <Building 
-                   id="packhouse"
-                   position={[0, 0, 0]} 
-                   args={[20, 6, 30]} 
-                   color="#f8fafc" 
-                   label="Packhouse"
-                   subtext="Processing"
-                   onSelect={onSelect}
-                   isSelected={selectedId === 'packhouse'} 
-               />
-
-               {/* Compost */}
-               <group position={[25, 0, -10]}>
-                    <Pile id="compost" position={[-3, 0, 0]} color="#78350f" onSelect={onSelect} isSelected={selectedId === 'compost'} />
-                    <Pile id="compost" position={[3, 0, 0]} color="#78350f" onSelect={onSelect} isSelected={selectedId === 'compost'} />
-                    <LabelCard position={[0, 4, 0]} text="Compost" subtext="Regeneration" color="amber" />
-               </group>
-
-               {/* Water */}
-               <group position={[-20, 0, 15]}>
-                    <Tank id="water" position={[0, 0, 0]} height={2} radius={5} color="#0ea5e9" onSelect={onSelect} isSelected={selectedId === 'water'} label="Water" subtext="Hub" />
-               </group>
-
-                {/* Fields */}
-                <group position={[15, 0, 20]}>
-                    <mesh rotation={[-Math.PI/2, 0, 0]} position={[0, 0.1, 0]}>
-                        <planeGeometry args={[30, 20]} />
-                        <meshStandardMaterial color="#16a34a" />
-                    </mesh>
-                    <Building 
-                        id="cultivation"
-                        position={[0, 0, 0]} 
-                        args={[30, 0.2, 20]} 
-                        color="#16a34a" 
-                        opacity={0}
-                        label="Fields"
-                        subtext="Vegetables"
-                        onSelect={onSelect}
-                        isSelected={selectedId === 'cultivation'} 
-                    />
-                </group>
-
-
-               {selectedId && facilityDataPlan1[selectedId] && (
-                   <SelectionIndicator targetPosition={
-                       selectedId === 'solar' ? [-25, 0, -25] :
-                       selectedId === 'packhouse' ? [0, 0, 0] :
-                       selectedId === 'compost' ? [25, 0, -10] :
-                       selectedId === 'water' ? [-20, 0, 15] :
-                       [15, 0, 20]
-                   } targetHeight={facilityDataPlan1[selectedId].height || 5} />
-               )}
-            </group>
-        )
-    }
-
-    // --- PLAN 2 SCENE (Agroforestry) ---
-    if (projectId === 'plan2') {
-        if (viewMode === 'evolution') {
-            return <AgroforestryEvolutionScene year={timelineYear} />;
-        }
-
-        return (
-            <group onPointerMissed={() => onSelect(null)}>
-               <ambientLight intensity={0.8} />
-               <directionalLight position={[50, 50, 25]} intensity={1.2} castShadow shadow-mapSize={[1024, 1024]}>
-                   <orthographicCamera attach="shadow-camera" args={[-50, 50, -50, 50, 0.1, 200]} />
-               </directionalLight>
-
-               {/* Ground */}
-               <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]} receiveShadow>
-                   <planeGeometry args={[100, 100]} />
-                   <meshStandardMaterial color="#f0fdf4" />
-               </mesh>
-
-                {/* Orchard Rows (Abstract representation) */}
-                <group position={[-15, 0, -10]}>
-                    <Building 
-                       id="orchard"
-                       position={[0, 0, 0]} 
-                       args={[35, 4, 30]} 
-                       color="#15803d" 
-                       label="Macadamia Orchard"
-                       subtext="Agroforestry"
-                       onSelect={onSelect}
-                       isSelected={selectedId === 'orchard'} 
-                   />
-                   {/* Trees details */}
-                   <mesh position={[0, 2.1, 0]} rotation={[-Math.PI/2, 0, 0]}>
-                       <planeGeometry args={[33, 28]} />
-                       <meshStandardMaterial color="#22c55e" />
-                   </mesh>
-                </group>
-
-                {/* Factory */}
-                <Building 
-                   id="factory"
-                   position={[15, 0, 0]} 
-                   args={[15, 7, 20]} 
-                   color="#e2e8f0" 
-                   label="Dairy Plant"
-                   subtext="Processing"
-                   onSelect={onSelect}
-                   isSelected={selectedId === 'factory'} 
-               />
-
-               {/* Cold Store */}
-               <Building 
-                   id="coldstore"
-                   position={[15, 0, 15]} 
-                   args={[12, 6, 8]} 
-                   color="#94a3b8" 
-                   label="Cold Chain"
-                   subtext="Logistics"
-                   onSelect={onSelect}
-                   isSelected={selectedId === 'coldstore'} 
-               />
-
-               {/* Water Tank */}
-                <Tank id="water" position={[25, 0, -5]} height={5} radius={2} color="#38bdf8" onSelect={onSelect} isSelected={selectedId === 'water'} label="H2O" subtext="Utilities" />
-
-                {/* Dry Warehouse */}
-                <Building 
-                   id="warehouse"
-                   position={[25, 0, 5]} 
-                   args={[8, 6, 10]} 
-                   color="#cbd5e1" 
-                   label="Warehouse"
-                   subtext="Storage"
-                   onSelect={onSelect}
-                   isSelected={selectedId === 'warehouse'} 
-               />
-
-               {/* Indicator */}
-               {selectedId && facilityDataPlan2[selectedId] && (
-                   <SelectionIndicator targetPosition={
-                       selectedId === 'orchard' ? [-15, 0, -10] :
-                       selectedId === 'factory' ? [15, 0, 0] :
-                       selectedId === 'coldstore' ? [15, 0, 15] :
-                       selectedId === 'warehouse' ? [25, 0, 5] :
-                       [25, 0, -5]
-                   } targetHeight={facilityDataPlan2[selectedId].height || 5} />
-               )}
-            </group>
-        )
-   }
-
-    // --- PLAN 6 SCENE (Bio-Energy) ---
-    // Default to Plan 6 layout
-    return (
-        <group onPointerMissed={() => onSelect(null)}>
-            <ambientLight intensity={0.7} />
-            <directionalLight position={[50, 50, 25]} intensity={1.5} castShadow shadow-mapSize={[1024, 1024]}>
-                <orthographicCamera attach="shadow-camera" args={[-50, 50, -50, 50, 0.1, 200]} />
-            </directionalLight>
-
-            {/* Ground */}
-            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]} receiveShadow>
-                <planeGeometry args={[100, 100]} />
-                <meshStandardMaterial color="#f0fdf4" />
-            </mesh>
-            
-            {/* 1. Feedstock Area (Left) */}
-            <group position={[-20, 0, 0]}>
-                <Pile id="feedstock" position={[-2, 1.25, -2]} color="#d97706" onSelect={onSelect} isSelected={selectedId === 'feedstock'} />
-                <Pile id="feedstock" position={[2, 1.25, 2]} color="#16a34a" onSelect={onSelect} isSelected={selectedId === 'feedstock'} />
-                <LabelCard position={[0, 5, 0]} text="Feedstock" subtext="Inputs" color="amber" />
-            </group>
-
-            {/* 2. Pelletizing */}
-            <Building 
-                id="pelletizer"
-                position={[-10, 0, -10]} 
-                args={[8, 6, 10]} 
-                color="#94a3b8" 
-                label="Pelletisation"
-                subtext="Processing"
-                onSelect={onSelect}
-                isSelected={selectedId === 'pelletizer'} 
-            />
-
-            {/* 3. Reactor */}
-            <Building 
-                id="reactor"
-                position={[5, 0, 0]} 
-                args={[15, 10, 20]} 
-                color="#334155" 
-                label="Reactor" 
-                subtext="Pyrolysis"
-                onSelect={onSelect}
-                isSelected={selectedId === 'reactor'}
-            />
-            
-            {/* 4. Refinery */}
-            <Building 
-                id="refinery"
-                position={[5, 0, 12]} 
-                args={[10, 8, 8]} 
-                color="#475569" 
-                label="Refinery" 
-                subtext="Distillation"
-                onSelect={onSelect}
-                isSelected={selectedId === 'refinery'}
-            />
-
-            {/* 5. Storage */}
-            <group position={[20, 0, 0]}>
-                <Tank id="storage" position={[-4, 0, -5]} height={8} radius={2.5} color="#e2e8f0" onSelect={onSelect} isSelected={selectedId === 'storage'} />
-                <Tank id="storage" position={[4, 0, -5]} height={8} radius={2.5} color="#e2e8f0" onSelect={onSelect} isSelected={selectedId === 'storage'} />
-                <LabelCard position={[0, 10, 0]} text="Storage" subtext="Output" color="slate" />
-            </group>
-
-            <Building id="office" position={[18, 0, 15]} args={[8, 4, 6]} color="#f1f5f9" label="Office" subtext="Control" onSelect={onSelect} isSelected={selectedId === 'office'} />
-
-             {/* Selection Indicator */}
-            {selectedId && facilityDataPlan6[selectedId] && (
-                <SelectionIndicator targetPosition={
-                        selectedId === 'feedstock' ? [-20, 0, 0] :
-                        selectedId === 'pelletizer' ? [-10, 0, -10] :
-                        selectedId === 'reactor' ? [5, 0, 0] :
-                        selectedId === 'refinery' ? [5, 0, 12] :
-                        selectedId === 'storage' ? [20, 0, 0] :
-                        [18, 0, 15]
-                } targetHeight={facilityDataPlan6[selectedId].height || 5} />
-            )}
-
         </group>
     );
 };
 
-const Facility3D: React.FC<Facility3DProps> = ({ projectId }) => {
-    const [selectedId, setSelectedId] = useState<string | null>(null);
-    const [viewMode, setViewMode] = useState<'layout' | 'evolution'>('layout');
-    const [timelineYear, setTimelineYear] = useState(1);
-    const [isInteracting, setIsInteracting] = useState(false);
-    
-    // Data lookup based on project
-    let data: Record<string, FacilityObjectInfo> = facilityDataPlan6;
-    if (projectId === 'plan5') data = facilityDataPlan5;
-    if (projectId === 'plan3b') data = facilityDataPlan3b;
-    if (projectId === 'plan4') data = facilityDataPlan4;
-    if (projectId === 'plan2') data = facilityDataPlan2;
-    if (projectId === 'plan3') data = facilityDataPlan3;
-    if (projectId === 'plan1') data = facilityDataPlan1;
-    if (projectId === 'master') data = facilityDataMaster; // Use new Master Data
-
-    const activeItem = selectedId ? data[selectedId] : null;
+const TreeRows = ({ position, rows = 5, length = 40, spacing = 8 }: any) => {
+    const treeData = useMemo(() => {
+        const data = [];
+        for (let r = 0; r < rows; r++) {
+            for (let z = 0; z < length; z+=8) { 
+                const x = (r * spacing) - ((rows * spacing) / 2);
+                const zPos = z - (length / 2);
+                data.push({ position: [x, 0, zPos], scale: 0.8 + Math.random() * 0.4 });
+            }
+        }
+        return data;
+    }, [rows, length, spacing]);
 
     return (
-        <div className="h-[400px] md:h-[600px] bg-slate-900 rounded-xl overflow-hidden relative animate-fade-in group">
-             {/* Interaction Overlay for Mobile/Touch to prevent scroll hijacking */}
-             {!isInteracting && (
-                <div 
-                    className="absolute inset-0 z-20 flex items-center justify-center bg-black/20 backdrop-blur-[1px] cursor-pointer transition-opacity duration-300"
-                    onClick={() => setIsInteracting(true)}
-                    onTouchStart={() => setIsInteracting(true)}
-                >
-                    <div className="bg-white/90 px-5 py-2.5 rounded-full font-bold text-slate-900 flex items-center gap-2 shadow-xl transform transition-transform hover:scale-105">
-                        <MousePointerClick className="w-5 h-5 text-emerald-600" />
-                        <span className="text-sm">Tap to Explore 3D Model</span>
+        <group position={position}>
+            <Instances range={500}>
+                <cylinderGeometry args={[0.4, 0.6, 2]} />
+                <meshStandardMaterial color="#3f2c22" />
+                {treeData.map((data, i) => (
+                    <Instance key={`trunk-${i}`} position={[data.position[0], 1, data.position[2]] as any} />
+                ))}
+            </Instances>
+            <Instances range={500}>
+                <dodecahedronGeometry args={[2.5, 0]} />
+                <meshStandardMaterial color="#15803d" />
+                {treeData.map((data, i) => (
+                    <Instance key={`canopy-${i}`} position={[data.position[0], 3, data.position[2]] as any} scale={data.scale} />
+                ))}
+            </Instances>
+        </group>
+    );
+};
+
+const LabelTag = ({ label, sub, color, position }: any) => {
+    const [hovered, setHover] = useState(false);
+    useCursor(hovered);
+    return (
+        <Html position={position} center distanceFactor={150} zIndexRange={[50, 0]}>
+            <div 
+                onMouseEnter={() => setHover(true)} 
+                onMouseLeave={() => setHover(false)}
+                className={`flex flex-col items-center transition-transform duration-300 pointer-events-none ${hovered ? 'scale-110 z-50' : 'scale-100 opacity-80'}`}
+            >
+                <div className="bg-slate-900/90 text-white px-3 py-1.5 rounded-lg border border-slate-700 shadow-xl backdrop-blur-md flex flex-col items-center">
+                    <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full" style={{ background: color }}></div>
+                        <span className="font-bold text-xs whitespace-nowrap">{label}</span>
                     </div>
+                    {hovered && <span className="text-[8px] uppercase text-slate-400 mt-1">{sub}</span>}
                 </div>
-            )}
+                <div className="w-px h-8 bg-gradient-to-b from-slate-700 to-transparent"></div>
+            </div>
+        </Html>
+    )
+}
 
-            {/* Close Interaction Button (Mobile Only) */}
-            {isInteracting && (
-                <button 
-                    className="absolute top-4 right-4 z-30 bg-slate-900/80 text-white p-2 rounded-full md:hidden backdrop-blur-sm border border-slate-700 shadow-lg"
-                    onClick={(e) => { e.stopPropagation(); setIsInteracting(false); setSelectedId(null); }}
-                >
-                    <X className="w-5 h-5" />
-                </button>
-            )}
+// --- 4. MASTER SCENE ASSEMBLY ---
 
-            {/* Overlay UI */}
-            <div className={`absolute top-4 left-4 z-10 bg-slate-900/80 backdrop-blur-md p-4 rounded-lg border border-slate-700 max-w-[200px] md:max-w-xs transition-opacity duration-300 ${isInteracting ? 'opacity-100' : 'opacity-40 md:opacity-100'}`}>
-                <h3 className="text-white font-bold flex items-center gap-2 text-sm md:text-base">
-                    <Info className="w-4 h-4 text-emerald-400" />
-                    {projectId === 'master' ? 'Master Cluster' : (projectId === 'plan2' && viewMode === 'evolution' ? 'Growth Timeline' : 'Facility Explorer')}
+const MasterScene = () => {
+    const [selectedId, setSelectedId] = useState<string | null>(null);
+    const handleSelect = (id: string) => setSelectedId(prev => prev === id ? null : id);
+
+    return (
+        <>
+            <ambientLight intensity={0.5} />
+            <directionalLight position={[-100, 150, 100]} intensity={1.5} castShadow shadow-bias={-0.0005} />
+            <Environment preset="sunset" blur={0.8} background />
+            <Stars radius={300} depth={50} count={3000} factor={4} saturation={0} fade />
+
+            {/* GROUND GRID - Lowered to prevent z-fighting */}
+            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, Y_GROUND, 0]} receiveShadow onClick={() => setSelectedId(null)}>
+                <planeGeometry args={[1000, 1000]} />
+                <meshStandardMaterial color="#0f172a" roughness={0.9} />
+            </mesh>
+            <gridHelper args={[1000, 50, 0x334155, 0x1e293b]} position={[0, Y_GROUND + 0.1, 0]} />
+
+            {/* FACILITIES */}
+            <FacilityPlan1 selected={selectedId === 'plan1'} onSelect={() => handleSelect('plan1')} />
+            <FacilityPlan2 selected={selectedId === 'plan2'} onSelect={() => handleSelect('plan2')} />
+            <FacilityPlan1A selected={selectedId === 'plan1a'} onSelect={() => handleSelect('plan1a')} />
+            <FacilityPlan3 selected={selectedId === 'plan3'} onSelect={() => handleSelect('plan3')} />
+            <FacilityPlan6 selected={selectedId === 'plan6'} onSelect={() => handleSelect('plan6')} />
+            <FacilityPlan3B selected={selectedId === 'plan3b'} onSelect={() => handleSelect('plan3b')} />
+            <FacilityPlan4 selected={selectedId === 'plan4'} onSelect={() => handleSelect('plan4')} />
+            <FacilityPlan5 selected={selectedId === 'plan5'} onSelect={() => handleSelect('plan5')} />
+
+            {/* FLOW LINES - Reduced opacity for less distraction */}
+            {/* Soy (1A) -> Factory (3) */}
+            <ResourceFlow start={[-ZONE_SPACING, 5, ZONE_SPACING]} end={[ZONE_SPACING, 10, 0]} color="#facc15" label="Soy Feedstock" />
+            
+            {/* Refinery (6) -> All */}
+            <ResourceFlow start={[ZONE_SPACING, 10, ZONE_SPACING]} end={[0, 5, 0]} color="#06b6d4" label="Fuel" speed={0.8} />
+            <ResourceFlow start={[ZONE_SPACING, 10, ZONE_SPACING]} end={[-ZONE_SPACING, 5, 0]} color="#06b6d4" />
+            
+            {/* Waste (2) -> Mushrooms (3B) */}
+            <ResourceFlow start={[-ZONE_SPACING, 5, 0]} end={[ZONE_SPACING, 5, -ZONE_SPACING]} color="#854d0e" label="Biomass" speed={0.5} />
+
+            {/* Solar (5) -> Grid */}
+            <ResourceFlow start={[-ZONE_SPACING, 10, -ZONE_SPACING]} end={[0, 15, 0]} color="#f59e0b" label="Solar Power" speed={1.5} />
+        </>
+    );
+}
+
+const Facility3D: React.FC<Facility3DProps> = ({ projectId }) => {
+    return (
+        <div className="w-full h-[600px] bg-slate-950 rounded-xl overflow-hidden shadow-2xl border border-slate-800 relative group">
+            
+            <div className="absolute top-0 left-0 w-full p-6 z-10 bg-gradient-to-b from-slate-950/90 to-transparent pointer-events-none">
+                <h3 className="text-white font-bold text-2xl drop-shadow-md flex items-center gap-3">
+                    <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></div>
+                    Estate Digital Twin
                 </h3>
-                <p className="text-slate-300 text-[10px] md:text-xs mt-1 hidden md:block">
-                    {projectId === 'master'
-                        ? 'A realtime digital twin of the entire Ubuntu Restoration Farms ecosystem. Click nodes for details.'
-                        : (projectId === 'plan2' && viewMode === 'evolution' 
-                        ? 'Visualize the 7-year timeline.'
-                        : 'Click on highlighted components to view specs.')
-                    }
+                <p className="text-emerald-400/80 text-xs font-bold tracking-[0.2em] mt-1 ml-6 uppercase">
+                    Spatial Blueprint • Click to Inspect
                 </p>
-                
-                {/* Plan 2 Specific Controls */}
-                {projectId === 'plan2' && (
-                    <div className="mt-2 md:mt-4 space-y-3 pointer-events-auto">
-                        <div className="flex bg-slate-800 p-1 rounded-lg">
-                            <button 
-                                onClick={(e) => { e.stopPropagation(); setViewMode('layout'); setIsInteracting(true); }}
-                                className={`flex-1 py-1 px-2 text-[10px] md:text-xs font-medium rounded-md transition-colors flex items-center justify-center gap-1 ${viewMode === 'layout' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'}`}
-                            >
-                                <Factory className="w-3 h-3" /> Layout
-                            </button>
-                            <button 
-                                onClick={(e) => { e.stopPropagation(); setViewMode('evolution'); setIsInteracting(true); }}
-                                className={`flex-1 py-1 px-2 text-[10px] md:text-xs font-medium rounded-md transition-colors flex items-center justify-center gap-1 ${viewMode === 'evolution' ? 'bg-emerald-600 text-white ring-2 ring-emerald-400/50 animate-pulse' : 'text-slate-400 hover:text-white'}`}
-                            >
-                                <Sprout className="w-3 h-3" /> Growth
-                            </button>
-                        </div>
-
-                        {viewMode === 'evolution' && (
-                            <div className="bg-slate-800 p-3 rounded-lg border border-slate-700" onPointerDown={(e) => e.stopPropagation()}>
-                                <div className="flex justify-between items-center mb-2 text-xs text-white font-bold">
-                                    <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-emerald-400" /> Timeline</span>
-                                    <span>Year {timelineYear}</span>
-                                </div>
-                                <input 
-                                    type="range" 
-                                    min="1" 
-                                    max="7" 
-                                    step="1" 
-                                    value={timelineYear} 
-                                    onChange={(e) => setTimelineYear(parseInt(e.target.value))}
-                                    className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                                />
-                            </div>
-                        )}
-                    </div>
-                )}
             </div>
 
-            {/* Selected Item Detail Panel */}
-            {activeItem && viewMode === 'layout' && (
-                <div className={`absolute bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-80 z-10 backdrop-blur-xl shadow-2xl rounded-lg p-0 border animate-slide-up overflow-hidden ${projectId === 'master' ? 'bg-slate-900/90 border-emerald-500/30' : 'bg-white/95 border-slate-200'}`}>
-                    
-                    {/* Header Bar */}
-                    <div className={`px-4 py-3 flex justify-between items-start border-b ${projectId === 'master' ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100'}`}>
-                        <div>
-                             <span className={`text-[10px] font-bold uppercase tracking-wider ${projectId === 'master' ? 'text-emerald-400' : 'text-emerald-600'}`}>{activeItem.type}</span>
-                             <h4 className={`text-lg font-bold ${projectId === 'master' ? 'text-white' : 'text-slate-900'}`}>{activeItem.name}</h4>
-                        </div>
-                        <button onClick={(e) => { e.stopPropagation(); setSelectedId(null); }} className={`${projectId === 'master' ? 'text-slate-400 hover:text-white' : 'text-slate-400 hover:text-slate-600'}`}>
-                            <X className="h-5 w-5" />
-                        </button>
-                    </div>
+            {/* Legend */}
+            <div className="absolute bottom-6 left-6 z-10 flex flex-col gap-2 pointer-events-none">
+                 <div className="flex items-center gap-2 bg-black/40 px-2 py-1 rounded backdrop-blur border border-white/10">
+                     <div className="w-4 h-0.5 bg-yellow-400"></div><span className="text-[10px] text-white font-bold uppercase">Feedstock</span>
+                 </div>
+                 <div className="flex items-center gap-2 bg-black/40 px-2 py-1 rounded backdrop-blur border border-white/10">
+                     <div className="w-4 h-0.5 bg-cyan-400"></div><span className="text-[10px] text-white font-bold uppercase">Energy</span>
+                 </div>
+            </div>
 
-                    {/* Body */}
-                    <div className="p-4">
-                        <p className={`text-sm mb-4 leading-relaxed ${projectId === 'master' ? 'text-slate-300' : 'text-slate-600'}`}>{activeItem.description}</p>
-                        
-                        {/* Extended Stats for Master View */}
-                        {projectId === 'master' && activeItem.stats ? (
-                            <div className="grid grid-cols-2 gap-2">
-                                {activeItem.stats.map((stat, i) => (
-                                    <div key={i} className="bg-slate-800 p-2 rounded border border-slate-700 flex flex-col">
-                                        <div className="flex items-center gap-1.5 mb-1">
-                                            <stat.icon className={`w-3 h-3 ${stat.color}`} />
-                                            <span className="text-[10px] text-slate-400 uppercase font-bold">{stat.label}</span>
-                                        </div>
-                                        <span className="text-sm font-bold text-white">{stat.value}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100">
-                                <div>
-                                    <span className="text-xs text-slate-400 block">Capacity/Spec</span>
-                                    <span className="text-sm font-bold text-slate-800">{activeItem.capacity}</span>
-                                </div>
-                                <div className="flex items-end justify-end">
-                                    <div className="text-xs bg-emerald-100 text-emerald-800 px-2 py-1 rounded font-medium flex items-center gap-1">
-                                        <Activity className="w-3 h-3" /> Live
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
-
-            <Canvas 
-                shadows 
-                camera={{ position: projectId === 'master' ? [40, 25, 40] : [40, 40, 40], fov: 45 }}
-                className={`${isInteracting ? 'cursor-move' : 'pointer-events-none'}`}
-            >
-                <color attach="background" args={[projectId === 'master' ? '#0f172a' : '#f0f9ff']} />
-                <fog attach="fog" args={[projectId === 'master' ? '#0f172a' : '#f0f9ff', 60, 150]} />
-                
-                {/* Controls */}
+            <Canvas shadows camera={{ position: [-180, 150, 180], fov: 35 }}>
+                <MasterScene />
                 <OrbitControls 
-                    makeDefault 
-                    autoRotate={projectId === 'master' && !isInteracting && !selectedId} 
-                    autoRotateSpeed={0.5}
-                    minPolarAngle={0} 
-                    maxPolarAngle={Math.PI / 2.2}
-                    maxDistance={projectId === 'master' ? 180 : 100}
-                    minDistance={20}
-                    enabled={isInteracting} 
-                />
-
-                {/* Soft Shadows */}
-                <SoftShadows size={25} focus={0} samples={10} />
-
-                {/* The Scene Content */}
-                <Scene 
-                    selectedId={selectedId} 
-                    onSelect={(id) => { if(isInteracting) setSelectedId(id); }} 
-                    projectId={projectId} 
-                    viewMode={viewMode} 
-                    timelineYear={timelineYear} 
-                />
-                
-                {/* Grid Helper */}
-                <gridHelper 
-                    args={[200, 40, projectId === 'master' ? '#334155' : '#cbd5e1', projectId === 'master' ? '#1e293b' : '#e2e8f0']} 
-                    position={[0, 0, 0]} 
+                    enablePan={true}
+                    enableZoom={true}
+                    maxPolarAngle={Math.PI / 2.2} // Don't go below ground
+                    maxDistance={400}
+                    minDistance={50}
+                    autoRotate={true}
+                    autoRotateSpeed={0.3} // Gentle rotation
                 />
             </Canvas>
+
+            <div className="absolute bottom-6 right-6 pointer-events-none opacity-50">
+                 <div className="text-white text-[10px] font-bold uppercase tracking-widest">
+                    Interactive 3D Model
+                 </div>
+            </div>
         </div>
     );
 };

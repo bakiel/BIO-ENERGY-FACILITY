@@ -159,44 +159,45 @@ const Sidebar: React.FC<SidebarProps> = ({
             </div>
         </div>
 
-        {/* Navigation Items (Only show if specific project selected) */}
+        {/* Navigation Items */}
         <div className="flex-1 py-4 px-3 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700">
-            {activeProjectId === 'master' ? (
-                <div className="px-4 py-8 text-center">
-                    <p className="text-slate-400 text-sm">Select a project from the dropdown above or the Master Dashboard to view detailed analytics.</p>
-                </div>
-            ) : (
-                <>
-                    <p className="px-4 text-xs text-slate-500 font-bold uppercase mb-2 mt-2">Project Navigation</p>
-                    {items.map((item) => {
-                        const Icon = item.icon;
-                        const isActive = activeTab === item.id;
-                        return (
-                            <button
-                            key={item.id}
-                            onClick={() => {
-                                setActiveTab(item.id);
-                                if (window.innerWidth < 1024) setIsOpen(false);
-                            }}
-                            className={`
-                                w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors
-                                ${isActive 
-                                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/20' 
-                                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                                }
-                            `}
-                            >
-                            <Icon className={`h-5 w-5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                            {item.label}
-                            </button>
-                        );
-                    })}
-                </>
-            )}
+            <p className="px-4 text-xs text-slate-500 font-bold uppercase mb-2 mt-2">
+                {activeProjectId === 'master' ? 'Master Navigation' : 'Project Navigation'}
+            </p>
+            
+            {items.map((item) => {
+                // For Master View, we only show relevant high-level tabs
+                // We hide Financials and Tech as those components need specific plan data currently
+                if (activeProjectId === 'master') {
+                    if (['financials', 'technology'].includes(item.id)) return null;
+                }
+
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                    <button
+                        key={item.id}
+                        onClick={() => {
+                            setActiveTab(item.id);
+                            if (window.innerWidth < 1024) setIsOpen(false);
+                        }}
+                        className={`
+                            w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors
+                            ${isActive 
+                            ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/20' 
+                            : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                            }
+                        `}
+                    >
+                        <Icon className={`h-5 w-5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                        {item.label}
+                    </button>
+                );
+            })}
         </div>
 
         {/* Status Footer */}
-        {activeProject && (
+        {activeProject && activeProjectId !== 'master' && (
             <div className="p-4 border-t border-slate-800 flex-shrink-0">
                 <div className="bg-slate-800 rounded-lg p-4">
                 <p className="text-xs text-slate-400 uppercase font-semibold mb-2">Project Status</p>

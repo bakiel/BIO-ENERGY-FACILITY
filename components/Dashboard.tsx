@@ -1,9 +1,10 @@
+
 import React from 'react';
 import { TrendingUp, Zap, Wallet, BarChart3, CheckCircle2, AlertTriangle, Box, ArrowRight } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import AudioButton from './AudioButton';
 import { voiceScripts } from '../data/voiceScripts';
-import { projects } from '../data/projects'; // Import projects to get voiceScriptKey
+import { projects } from '../data/projects';
 
 interface DashboardProps {
   setActiveTab: (tabId: string) => void;
@@ -17,11 +18,11 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, projectId, isPlaying, currentPlayingId, isLoadingAudio, fetchAndPlayAudio, pauseAudio }) => {
   
-  // Plan 1 Data (The Farm)
+  // Plan 1 Data (The Farm) - Corrected R57.05M
   const plan1Data = {
-    investment: { total: '57.1M', loan: '100%', grant: '0%' },
+    investment: { total: '57.05M', loan: '100%', grant: '0%' },
     revenue: { year3: '34.3M', margin: '71.5%' },
-    jobs: { total: '85', subtext: '+370 Indirect' },
+    jobs: { total: '185', subtext: '(Year 1-3 Avg)' },
     dscr: { value: '3.48x', subtext: 'Min required: 1.25x' },
     chartData: [
       { name: 'Year 1', revenue: 34.3, profit: 24.5 },
@@ -37,16 +38,41 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, projectId, isPlayin
     ],
     risks: [
       { label: 'Base Case', roi: '3.48x', subtext: 'DSCR', color: 'text-emerald-400' },
-      { label: 'Drought Risk', roi: '0%', subtext: 'Mitigated (9 Boreholes)', color: 'text-emerald-400' },
+      { label: 'Drought Risk', roi: '-2%', subtext: 'Rev Impact (Low)', color: 'text-emerald-400' },
       { label: 'Market Price', roi: 'Hedged', subtext: 'Pre-sold Contracts', color: 'text-emerald-400' }
     ]
   };
 
-  // Plan 3 Data (Meat Factory)
+  // Plan 2 Data (Agroforestry Dairy) - Corrected R77M
+  const plan2Data = {
+    investment: { total: '77.0M', loan: '64%', grant: '36%' },
+    revenue: { year3: '95.2M', margin: '72.0%' },
+    jobs: { total: '62', subtext: 'Year 1-3 Avg' },
+    dscr: { value: '16.6x', subtext: 'Year 7 (Min 1.25x)' },
+    chartData: [
+      { name: 'Year 1', revenue: 40.8, profit: 20.4 },
+      { name: 'Year 2', revenue: 67.6, profit: 37.1 },
+      { name: 'Year 3', revenue: 95.2, profit: 68.5 },
+      { name: 'Year 5', revenue: 125.1, profit: 75.0 },
+      { name: 'Year 7', revenue: 196.8, profit: 105.4 },
+    ],
+    phases: [
+      { title: 'Phase 1: Establishment', time: 'Years 1-3', desc: '36k Trees planted. Soy dairy production at full capacity (270T soy).', status: 'current' },
+      { title: 'Phase 2: Transition', time: 'Years 4-6', desc: 'Orchards mature. Dairy transitions from Soy to Macadamia base.', status: 'future' },
+      { title: 'Phase 3: Maturity', time: 'Year 7+', desc: 'Full Macadamia production + Premium Dairy export markets.', status: 'future' }
+    ],
+    risks: [
+      { label: 'Base Case', roi: '16.6x', subtext: 'DSCR (Year 7)', color: 'text-emerald-400' },
+      { label: 'Climate Risk', roi: '-20%', subtext: 'Water Use (Agroforestry)', color: 'text-emerald-400' },
+      { label: 'Market Shift', roi: 'Hedged', subtext: 'Dual Commodity', color: 'text-emerald-400' }
+    ]
+  };
+
+  // Plan 3 Data (Meat Factory) - Corrected R66M
   const plan3Data = {
     investment: { total: '66.0M', loan: '70%', grant: '30%' },
     revenue: { year3: '114.9M', margin: '40.2%' },
-    jobs: { total: '145', subtext: '+118 Indirect' },
+    jobs: { total: '98', subtext: 'Year 1-3 Avg' },
     dscr: { value: '8.5x', subtext: 'Govt Contracts Locked' },
     chartData: [
       { name: 'Year 1', revenue: 57.5, profit: 23.1 },
@@ -67,11 +93,11 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, projectId, isPlayin
     ]
   };
 
-  // Plan 3B Data (Medicinal Mushrooms)
+  // Plan 3B Data (Medicinal Mushrooms) - Corrected R38M
   const plan3bData = {
     investment: { total: '38.0M', loan: '70%', grant: '30%' },
     revenue: { year3: '30.8M', margin: '40.0%' },
-    jobs: { total: '70', subtext: '42 Direct / 28 Indirect' },
+    jobs: { total: '47', subtext: 'Year 1-3 Avg' },
     dscr: { value: '2.41x', subtext: 'IRR 24.3%' },
     chartData: [
       { name: 'Year 1', revenue: 15.4, profit: 2.6 },
@@ -92,11 +118,11 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, projectId, isPlayin
     ]
   };
 
-  // Plan 4 Data (Artisan Cheese)
+  // Plan 4 Data (Artisan Cheese) - Corrected R55M
   const plan4Data = {
     investment: { total: '55.0M', loan: '70%', grant: '30%' },
     revenue: { year3: '39.6M', margin: '34.5%' },
-    jobs: { total: '53', subtext: '+40 Indirect' },
+    jobs: { total: '53', subtext: 'Year 1-3 Avg' },
     dscr: { value: '3.99x', subtext: 'Year 7 (Full Maturity)' },
     chartData: [
       { name: 'Year 1', revenue: 4.9, profit: -12.8 },
@@ -117,36 +143,36 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, projectId, isPlayin
     ]
   };
 
-  // Plan 5 Data (Pharma)
+  // Plan 5 Data (Estate Solar) - CORRECTED to Solar Array
   const plan5Data = {
-    investment: { total: '99.8M', loan: '70%', grant: '30%' },
-    revenue: { year3: '575.2M', margin: '73.8%' },
-    jobs: { total: '85', subtext: '+120 Indirect' },
-    dscr: { value: '37.4x', subtext: 'Min required: 1.25x' },
+    investment: { total: '38.0M', loan: 'NEF', grant: 'Grants' },
+    revenue: { year3: '60.4M', margin: '95%' },
+    jobs: { total: '18', subtext: 'Tech & Maintenance' },
+    dscr: { value: 'N/A', subtext: 'Cost Saving Model' },
     chartData: [
-      { name: 'Year 1', revenue: 172.6, profit: 118.8 },
-      { name: 'Year 2', revenue: 345.1, profit: 249.5 },
-      { name: 'Year 3', revenue: 575.2, profit: 424.3 },
-      { name: 'Year 4', revenue: 575.2, profit: 424.3 },
-      { name: 'Year 5', revenue: 575.2, profit: 424.3 },
+      { name: 'Year 1', revenue: 15.0, profit: 14.0 },
+      { name: 'Year 2', revenue: 35.0, profit: 33.0 },
+      { name: 'Year 3', revenue: 60.4, profit: 57.0 },
+      { name: 'Year 4', revenue: 60.4, profit: 57.0 },
+      { name: 'Year 5', revenue: 60.4, profit: 57.0 },
     ],
     phases: [
-      { title: 'Phase 1: Infrastructure', time: 'Months 1-8', desc: 'Greenhouse construction & Solar array installation.', status: 'current' },
-      { title: 'Phase 2: Certification', time: 'Months 9-24', desc: 'Organic, GMP, HACCP & ISO 22000 accreditation.', status: 'future' },
-      { title: 'Phase 3: Market Dominance', time: 'Year 3+', desc: '60% Retail / 40% Export split. Full capacity.', status: 'future' }
+      { title: 'Phase 1: Procurement', time: 'Months 1-3', desc: 'Import panels and inverters. Site preparation for 4.9MW array.', status: 'current' },
+      { title: 'Phase 2: Installation', time: 'Months 4-6', desc: 'Rooftop and ground-mount arrays installed across all facilities.', status: 'future' },
+      { title: 'Phase 3: Independence', time: 'Month 7+', desc: 'Full micro-grid commissioning. Eskom disconnection possible.', status: 'future' }
     ],
     risks: [
-      { label: 'Base Case', roi: '5.2mo', subtext: 'Payback Period', color: 'text-emerald-400' },
-      { label: 'Load Shedding', roi: '0%', subtext: 'Impact (100% Solar)', color: 'text-emerald-400' },
-      { label: 'Certification Delay', roi: '18mo', subtext: 'Delayed Payback', color: 'text-amber-400' }
+      { label: 'Efficiency', roi: '99%', subtext: 'System Uptime', color: 'text-emerald-400' },
+      { label: 'Grid Fail', roi: '0%', subtext: 'Impact (Battery)', color: 'text-emerald-400' },
+      { label: 'Savings', roi: 'R60M+', subtext: 'Annual Value', color: 'text-emerald-400' }
     ]
   };
 
-  // Plan 6 Data (Bio-Energy)
+  // Plan 6 Data (Bio-Energy) - Corrected R40M
   const plan6Data = {
     investment: { total: '40.0M', loan: '70%', grant: '30%' },
     revenue: { year3: '89.8M', margin: '80.7%' },
-    jobs: { total: '48', subtext: 'Carbon: -12,504 T' },
+    jobs: { total: '19', subtext: 'Direct (Y1-3)' },
     dscr: { value: '12.9x', subtext: 'Min required: 1.25x' },
     chartData: [
       { name: 'Year 1', revenue: 35.0, profit: 15.0 },
@@ -162,33 +188,8 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, projectId, isPlayin
     ],
     risks: [
       { label: 'Base Case', roi: '290%', subtext: 'ROI', color: 'text-emerald-400' },
-      { label: 'Severe Stress', roi: '156%', subtext: '+50% Feedstock', color: 'text-amber-400' },
-      { label: 'Crisis Scenario', roi: '94%', subtext: 'Diesel Crash', color: 'text-red-400' }
-    ]
-  };
-
-  // Plan 2 Data (Agroforestry Dairy)
-  const plan2Data = {
-    investment: { total: '77.0M', loan: '64%', grant: '36%' },
-    revenue: { year3: '95.2M', margin: '72.0%' },
-    jobs: { total: '62', subtext: '+48 Indirect' },
-    dscr: { value: '16.6x', subtext: 'Year 7 (Min 1.25x)' },
-    chartData: [
-      { name: 'Year 1', revenue: 40.8, profit: 20.4 },
-      { name: 'Year 2', revenue: 67.6, profit: 37.1 },
-      { name: 'Year 3', revenue: 95.2, profit: 68.5 },
-      { name: 'Year 5', revenue: 125.1, profit: 75.0 },
-      { name: 'Year 7', revenue: 196.8, profit: 105.4 },
-    ],
-    phases: [
-      { title: 'Phase 1: Establishment', time: 'Years 1-3', desc: '36k Trees planted. Soy dairy production at full capacity (270T soy).', status: 'current' },
-      { title: 'Phase 2: Transition', time: 'Years 4-6', desc: 'Orchards mature. Dairy transitions from Soy to Macadamia base.', status: 'future' },
-      { title: 'Phase 3: Maturity', time: 'Year 7+', desc: 'Full Macadamia production + Premium Dairy export markets.', status: 'future' }
-    ],
-    risks: [
-      { label: 'Base Case', roi: '16.6x', subtext: 'DSCR (Year 7)', color: 'text-emerald-400' },
-      { label: 'Climate Risk', roi: '-20%', subtext: 'Water Use (Agroforestry)', color: 'text-emerald-400' },
-      { label: 'Market Shift', roi: 'Hedged', subtext: 'Dual Commodity', color: 'text-emerald-400' }
+      { label: 'Crisis Mode', roi: '+5%', subtext: 'Revenue Gain', color: 'text-emerald-400' },
+      { label: 'Diesel Shortage', roi: 'Profit', subtext: 'Market Premium', color: 'text-emerald-400' }
     ]
   };
 
@@ -254,7 +255,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, projectId, isPlayin
           <div className="flex justify-between items-start">
             <div>
               <p className="text-sm font-medium text-slate-500 flex items-center">
-                {projectId === 'plan1' ? 'Year 1 Revenue' : (projectId === 'plan2' || projectId === 'plan4' ? 'Year 7 Revenue' : 'Year 3 Revenue')}
+                {projectId === 'plan1' ? 'Year 1 Revenue' : (projectId === 'plan2' || projectId === 'plan4' ? 'Year 7 Revenue' : (projectId === 'plan5' ? 'Annual Savings' : 'Year 3 Revenue'))}
                 {projectVoiceScript?.revenue && (
                   <AudioButton
                     id={`${projectId}-revenue`}
@@ -276,7 +277,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, projectId, isPlayin
           </div>
           <div className={`mt-4 flex items-center text-sm text-${themeColor}-600 font-medium`}>
             <TrendingUp className="h-3 w-3 mr-1" />
-            <span>{data.revenue.margin} {projectId === 'plan2' ? 'Margin (Soy)' : (projectId === 'plan4' ? 'Net Margin' : 'EBITDA Margin')}</span>
+            <span>{data.revenue.margin} {projectId === 'plan2' ? 'Margin (Soy)' : (projectId === 'plan4' ? 'Net Margin' : (projectId === 'plan5' ? 'Energy Savings' : 'EBITDA Margin'))}</span>
           </div>
         </div>
 
@@ -352,7 +353,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, projectId, isPlayin
                   contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                   formatter={(value: number) => [`R ${value}M`, '']}
                 />
-                <Bar dataKey="revenue" name="Revenue" fill={fillColor} radius={[4, 4, 0, 0]} barSize={30} />
+                <Bar dataKey="revenue" name={projectId === 'plan5' ? 'Savings' : 'Revenue'} fill={fillColor} radius={[4, 4, 0, 0]} barSize={30} />
                 <Bar dataKey="profit" name="Net Profit/EBITDA" fill="#0f172a" radius={[4, 4, 0, 0]} barSize={30} />
               </BarChart>
             </ResponsiveContainer>
@@ -404,7 +405,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, projectId, isPlayin
         </div>
         <p className="text-slate-300 mb-6 max-w-3xl text-sm md:text-base">
           {projectId === 'plan5' 
-            ? "The facility is designed to be completely immune to South African infrastructure risks. 100% Solar + Battery eliminates load-shedding risk entirely, protecting pharmaceutical batch integrity."
+            ? "The Estate Solar plan provides 100% operational uptime regardless of grid status. While competitors face spoilage and downtime during load-shedding, Ubuntu maintains full capacity, effectively gaining market share during crises."
             : projectId === 'plan3b'
                ? "Our 3-5 year first-mover advantage in SA Lion's Mane production builds an insurmountable brand moat before competitors can exit organic conversion. Diversified export/retail channels mitigate market concentration."
             : projectId === 'plan2' 
