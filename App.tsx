@@ -169,14 +169,16 @@ const App: React.FC = () => {
     if (!audioData) {
       try {
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        // We instruct the model to use a specific accent in the text prompt
         const response = await ai.models.generateContent({
           model: "gemini-2.5-flash-preview-tts",
-          contents: [{ parts: [{ text: text }] }],
+          contents: [{ parts: [{ text: `Speak with a professional South African accent: ${text}` }] }],
           config: {
             responseModalities: [Modality.AUDIO],
             speechConfig: {
               voiceConfig: {
-                prebuiltVoiceConfig: { voiceName: 'Zephyr' }, // Default voice
+                // Fenrir offers a deeper, more authoritative tone suitable for investment narration
+                prebuiltVoiceConfig: { voiceName: 'Fenrir' }, 
               },
             },
           },

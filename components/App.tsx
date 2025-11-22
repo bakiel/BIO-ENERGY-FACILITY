@@ -12,6 +12,7 @@ import MasterDashboard from './components/MasterDashboard';
 import SkeletonLoader from './components/SkeletonLoader';
 import LandingPage from './components/LandingPage';
 import AnimationStoryboard from './components/AnimationStoryboard';
+import Plan1Storyboard from './components/Plan1Storyboard';
 import { NavItem } from './types';
 import { projects } from './data/projects';
 
@@ -116,6 +117,8 @@ const App: React.FC = () => {
       case 'model3d':
         return <Facility3D projectId={activeProjectId} />;
       case 'storyboard':
+          if (activeProjectId === 'plan1') return <Plan1Storyboard />;
+          // Fallback to generic if specific plan storyboard not yet built
           return <AnimationStoryboard />;
       case 'impact':
         return <Impact projectId={activeProjectId} />;
