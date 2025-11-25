@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { LayoutDashboard, BarChart3, Cog, Sprout, Box as BoxIcon, Network, Film } from 'lucide-react';
 import Sidebar from './components/Sidebar';
@@ -16,6 +15,7 @@ import GlobalAudioControls from './components/GlobalAudioControls';
 import AppLoader from './components/AppLoader';
 import { NavItem } from './types';
 import { projects } from './data/projects';
+import { decodeBase64, decodeAudioData } from './utils/audio';
 import { GoogleGenAI, Modality } from '@google/genai';
 
 const navItems: NavItem[] = [
@@ -28,40 +28,10 @@ const navItems: NavItem[] = [
   { id: 'impact', label: 'Impact & ESG', icon: Sprout },
 ];
 
-// Utility functions for audio encoding/decoding (as per GenAI guidelines)
-function decode(base64: string) {
-  const binaryString = atob(base64);
-  const len = binaryString.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes;
-}
-
-async function decodeAudioData(
-  data: Uint8Array,
-  ctx: AudioContext,
-  sampleRate: number,
-  numChannels: number,
-): Promise<AudioBuffer> {
-  const dataInt16 = new Int16Array(data.buffer);
-  const frameCount = dataInt16.length / numChannels;
-  const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
-
-  for (let channel = 0; channel < numChannels; channel++) {
-    const channelData = buffer.getChannelData(channel);
-    for (let i = 0; i < frameCount; i++) {
-      channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
-    }
-  }
-  return buffer;
-}
-
 const App: React.FC = () => {
   // State for Initial App Load
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-  
+
   const [showLanding, setShowLanding] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeProjectId, setActiveProjectId] = useState<string | 'master'>('master');
@@ -115,7 +85,7 @@ const App: React.FC = () => {
     try {
       setIsPlaying(true);
       const audioBuffer = await decodeAudioData(
-        decode(audioData),
+        decodeBase64(audioData),
         audioContextRef.current,
         24000,
         1,
@@ -178,7 +148,7 @@ const App: React.FC = () => {
             speechConfig: {
               voiceConfig: {
                 // Fenrir offers a deeper, more authoritative tone suitable for investment narration
-                prebuiltVoiceConfig: { voiceName: 'Fenrir' }, 
+                prebuiltVoiceConfig: { voiceName: 'Fenrir' },
               },
             },
           },
@@ -238,13 +208,13 @@ const App: React.FC = () => {
 
   const handleProjectChange = (id: string | 'master') => {
     if (id === activeProjectId) return;
-    
+
     stopCurrentAudio(); // Stop audio when changing projects
     setIsLoading(true);
-    
+
     setTimeout(() => {
         setActiveProjectId(id);
-        setActiveTab('dashboard'); 
+        setActiveTab('dashboard');
         setIsLoading(false);
     }, 800);
   };
@@ -280,19 +250,19 @@ const App: React.FC = () => {
     }
 
     const availableProjects = ['plan1', 'plan2', 'plan3', 'plan3b', 'plan4', 'plan5', 'plan6'];
-    
+
     if (!availableProjects.includes(activeProjectId)) {
         return (
             <div className="flex flex-col items-center justify-center h-[60vh] text-center">
                 <div className="p-6 bg-white rounded-xl shadow-sm border border-slate-200 max-w-md">
                     <h2 className="text-xl font-bold text-slate-900 mb-2">Detailed Plan View Loading...</h2>
                     <p className="text-slate-500 mb-6">
-                        The interactive investment model for {projects.find(p => p.id === activeProjectId)?.name} is currently being generated. 
+                        The interactive investment model for {projects.find(p => p.id === activeProjectId)?.name} is currently being generated.
                         <br/><br/>
                         Please navigate to an available plan below:
                     </p>
                     <div className="flex gap-3 justify-center flex-wrap">
-                         <button 
+                         <button
                             onClick={() => handleProjectChange('plan1')}
                             className="bg-emerald-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-emerald-600"
                         >
@@ -335,10 +305,10 @@ const App: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-slate-50 font-sans text-slate-900 selection:bg-emerald-200 selection:text-emerald-900 overflow-hidden">
-      <Sidebar 
-        items={navItems} 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
+      <Sidebar
+        items={navItems}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
         isOpen={isSidebarOpen}
         setIsOpen={setIsSidebarOpen}
         activeProjectId={activeProjectId}
@@ -348,17 +318,17 @@ const App: React.FC = () => {
           setShowLanding(true);
         }}
       />
-      
+
       <main className="flex-1 overflow-y-auto h-screen scroll-smooth">
         <div className="h-16 lg:hidden"></div>
-        
+
         <div className="max-w-7xl mx-auto p-4 md:p-8 pb-24">
-            
+
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 gap-2">
                 <div>
                     <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
-                        {activeProjectId === 'master' 
-                            ? (activeTab === 'storyboard' ? 'The Visual Journey' : 
+                        {activeProjectId === 'master'
+                            ? (activeTab === 'storyboard' ? 'The Visual Journey' :
                                activeTab === 'model3d' ? 'Estate 3D Digital Twin' :
                                activeTab === 'system' ? 'System Integration Blueprint' :
                                activeTab === 'impact' ? 'Double Bottom Line Impact' :
@@ -366,8 +336,8 @@ const App: React.FC = () => {
                             : projects.find(p => p.id === activeProjectId)?.name}
                     </h1>
                     <p className="text-slate-500 text-xs sm:text-sm">
-                        {activeProjectId === 'master' 
-                            ? (activeTab === 'storyboard' ? '10 Illustrative Moments that define the Ubuntu Model' : 
+                        {activeProjectId === 'master'
+                            ? (activeTab === 'storyboard' ? '10 Illustrative Moments that define the Ubuntu Model' :
                                activeTab === 'model3d' ? '645 Hectare interactive facility and agricultural zones' :
                                activeTab === 'system' ? 'Interconnected flows of energy, water, and biomass' :
                                activeTab === 'impact' ? 'Quantifying the regenerative outcomes' :
